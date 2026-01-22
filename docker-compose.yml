@@ -1,0 +1,7 @@
+services:
+  orion-ui:
+    build: .
+    image: orion-ui:latest
+    ports:
+      - "8081:80"
+    restart: unless-stopped
