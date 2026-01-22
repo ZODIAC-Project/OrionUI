@@ -7,14 +7,13 @@ metadata:
     app: orion-ui
 spec:
   type: NodePort
+  selector:
+    app: orion-ui
   ports:
     - name: http
       port: 80
       targetPort: 80
       nodePort: 30081
-      protocol: TCP
-  selector:
-    app: orion-ui
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -38,6 +37,11 @@ spec:
       containers:
         - name: orion-ui
           image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
+          env:
+          - name: VITE_CHAT_API_BASE
+            value: "mcp-client-service:8001"
+          - name: VITE_CHAT_API_PATH
+            value: "/chat"
           ports:
             - containerPort: 80
