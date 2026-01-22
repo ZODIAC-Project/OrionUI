@@ -34,6 +34,6 @@ kubectl -n zodiac port-forward svc/orion-ui 8081:80
 ```
 und dann [http://localhost:8081/](http://localhost:8081/) öffnen.
 
-````
+```
 kubectl -n zodiac port-forward svc/mcp-client-service 8000:8000 --address 0.0.0.0
 ```
