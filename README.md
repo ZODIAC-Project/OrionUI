@@ -23,9 +23,9 @@ Alternativ kannst du Base URL und Pfad direkt in der UI anpassen.
 
 ## K8s (empfohlen)
 
-Aktualisieren Sie Ihre HiveZODIAC/k8s/deployment.yaml
+Aktualisieren Sie Ihre k8s/deployment.yaml
 ```
-kubectl apply -f HiveZODIAC/k8s/deployment.yaml
+kubectl apply -f k8s/deployment.yaml
 ```
 Ein Portforward noch
 
