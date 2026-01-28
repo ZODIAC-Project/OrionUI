@@ -23,9 +23,50 @@
         <label>Session-ID (optional)</label>
         <input v-model="sessionId" type="text" placeholder="z. B. demo-session" />
       </div>
+      <div class="field">
+        <label>Agent API Base URL</label>
+        <input v-model="agentApiBase" type="text" placeholder="/agent-api" />
+      </div>
       <div class="hint">
         <span>Standard ist die FastAPI-Route <strong>/chat</strong> aus dem Ollama MCP Client.</span>
       </div>
+    </section>
+
+    <section class="panel agents">
+      <header class="panel-header">
+        <div>
+          <h2>Agenten</h2>
+          <p>Intervall-Agenten erzeugen zusätzlichen Traffic zum MCP-Client.</p>
+        </div>
+        <button class="ghost" type="button" @click="loadAgents" :disabled="agentLoading">Neu laden</button>
+      </header>
+
+      <form class="agent-form" @submit.prevent="createAgent">
+        <div class="field">
+          <label>Intervall (ms)</label>
+          <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" />
+        </div>
+        <div class="field">
+          <label>Text</label>
+          <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+        </div>
+        <button type="submit" :disabled="agentLoading || !agentText.trim() || agentIntervalMs < 1000">
+          Agent starten
+        </button>
+      </form>
+
+      <div v-if="agentError" class="error">{{ agentError }}</div>
+
+      <div class="agent-list" v-if="agents.length">
+        <div v-for="agent in agents" :key="agent.agentId" class="agent-card">
+          <div>
+            <div class="agent-title">{{ agent.agentId }}</div>
+            <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }}</div>
+          </div>
+          <button class="ghost" type="button" @click="deleteAgent(agent.agentId)">Stoppen</button>
+        </div>
+      </div>
+      <div v-else class="empty">Noch keine Agenten aktiv.</div>
     </section>
 
     <section class="panel chat">
@@ -59,16 +100,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive, nextTick, onMounted } from 'vue'
 
 const apiBase = ref(import.meta.env.VITE_CHAT_API_BASE || '/api')
 const apiPath = ref(import.meta.env.VITE_CHAT_API_PATH || '/chat')
 const sessionId = ref('')
+const agentApiBase = ref(import.meta.env.VITE_AGENT_API_BASE || '/agent-api')
 
 const input = ref('')
 const isSending = ref(false)
 const error = ref('')
 const messageList = ref(null)
+
+const agents = reactive([])
+const agentIntervalMs = ref(5000)
+const agentText = ref('')
+const agentError = ref('')
+const agentLoading = ref(false)
 
 const messages = reactive([
   {
@@ -139,6 +187,77 @@ const sendMessage = async () => {
     await scrollToBottom()
   }
 }
+
+const normalizeBase = (value) => (value.endsWith('/') ? value.slice(0, -1) : value)
+
+const loadAgents = async () => {
+  agentError.value = ''
+  agentLoading.value = true
+  try {
+    const base = normalizeBase(agentApiBase.value)
+    const res = await fetch(`${base}/agents`)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+    const data = await res.json()
+    agents.splice(0, agents.length, ...(Array.isArray(data) ? data : []))
+  } catch (err) {
+    agentError.value = err instanceof Error ? err.message : 'Fehler beim Laden der Agenten.'
+  } finally {
+    agentLoading.value = false
+  }
+}
+
+const createAgent = async () => {
+  if (agentLoading.value) return
+  agentError.value = ''
+  agentLoading.value = true
+  try {
+    const base = normalizeBase(agentApiBase.value)
+    const res = await fetch(`${base}/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intervalMs: agentIntervalMs.value,
+        text: agentText.value.trim()
+      })
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+    agentText.value = ''
+    await loadAgents()
+  } catch (err) {
+    agentError.value = err instanceof Error ? err.message : 'Fehler beim Erstellen des Agenten.'
+  } finally {
+    agentLoading.value = false
+  }
+}
+
+const deleteAgent = async (agentId) => {
+  if (agentLoading.value) return
+  agentError.value = ''
+  agentLoading.value = true
+  try {
+    const base = normalizeBase(agentApiBase.value)
+    const res = await fetch(`${base}/agents/${agentId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+    await loadAgents()
+  } catch (err) {
+    agentError.value = err instanceof Error ? err.message : 'Fehler beim Stoppen des Agenten.'
+  } finally {
+    agentLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadAgents()
+})
 </script>
 
 <style scoped>
@@ -218,6 +337,66 @@ const sendMessage = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel-header h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+}
+
+.panel-header p {
+  margin: 0;
+  color: #9aa3b2;
+  font-size: 13px;
+}
+
+.agent-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.agent-list {
+  display: grid;
+  gap: 12px;
+}
+
+.agent-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #12151d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.agent-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #e4e9f2;
+}
+
+.agent-meta {
+  color: #9aa3b2;
+  font-size: 12px;
+}
+
+.empty {
+  color: #8b94a6;
+  font-size: 13px;
 }
 
 .messages {
@@ -318,6 +497,10 @@ button.ghost {
   }
 
   .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-form {
     grid-template-columns: 1fr;
   }
 
