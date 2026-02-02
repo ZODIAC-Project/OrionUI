@@ -37,3 +37,21 @@ und dann [http://localhost:8081/](http://localhost:8081/) öffnen.
 ```
 kubectl -n zodiac port-forward svc/mcp-client-service 8000:8000 --address 0.0.0.0
 ```
+### How to open the UI in browser:
+1. Get the IP of the Cluster Node:
+```bash
+kubectl get nodes -o wide
+```
+2. Open the UI in your browser using the Node IP:
+```
+http://<NODE_IP>:30081/
+```
+
+### Image Tagging script:
+If you want to build and push new images to your registry, you can use the following script to build and then tag the images with the digest.
+
+To use the flag --token-file, create a file named token-file.txt and add your registry token in it
+```bash
+./image_tagging_script.sh -f ./Dockerfile --token-file token-file.txt --username git git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui k8s/deployment.yaml
+```
+
