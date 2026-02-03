@@ -1,5 +1,6 @@
 <template>
   <div class="app">
+    <StatusBar :targets="statusTargets" @update-target-url="updateTargetUrl" />
     <header class="topbar">
       <div>
         <h1>Zodiac Chat</h1>
@@ -100,12 +101,54 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, computed } from 'vue'
+import StatusBar from './components/StatusBar.vue'
 
 const apiBase = ref(import.meta.env.VITE_CHAT_API_BASE || '/api')
 const apiPath = ref(import.meta.env.VITE_CHAT_API_PATH || '/chat')
 const sessionId = ref('')
 const agentApiBase = ref(import.meta.env.VITE_AGENT_API_BASE || '/agent-api')
+
+// Status targets (health-checked URLs). Initialize from envs and allow user edits.
+const STORAGE_KEY = 'orionui_status_targets'
+const defaultTargets = [
+  { id: 'broker', label: 'Broker', url: import.meta.env.VITE_BROKER_URL || 'URL nicht gesetzt' },
+  { id: 'clients', label: 'MCP Clients', url: import.meta.env.VITE_MCP_CLIENT_URL || 'URL nicht gesetzt' },
+  { id: 'llm', label: 'LLM', url: import.meta.env.VITE_LLM_URL || 'URL nicht gesetzt' }
+]
+
+const statusTargets = ref([])
+
+const loadStatusTargets = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length) {
+        statusTargets.value = parsed
+        return
+      }
+    }
+  } catch (e) {
+    // ignore and fall back to defaults
+  }
+  statusTargets.value = defaultTargets
+}
+
+const saveStatusTargets = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(statusTargets.value))
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
+const updateTargetUrl = ({ index, url }) => {
+  if (Number.isInteger(index) && statusTargets.value[index]) {
+    statusTargets.value[index].url = url && url.trim() ? url.trim() : 'URL nicht gesetzt'
+    saveStatusTargets()
+  }
+}
 
 const input = ref('')
 const isSending = ref(false)
@@ -257,6 +300,7 @@ const deleteAgent = async (agentId) => {
 
 onMounted(() => {
   loadAgents()
+  loadStatusTargets()
 })
 </script>
 

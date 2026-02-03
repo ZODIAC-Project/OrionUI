@@ -1,1 +1,6 @@
 token-file.txt
+node_modules
+.env
+package-lock.json
+.package-lock.json
+_metadata.json
