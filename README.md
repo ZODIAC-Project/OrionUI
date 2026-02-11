@@ -15,7 +15,7 @@ npm run dev
 Erstelle optional eine `.env` Datei im Projektordner und überschreibe die Defaults:
 
 ```
-VITE_CHAT_API_BASE=http://localhost:8000
+VITE_CHAT_API_BASE=http://localhost:8001
 VITE_CHAT_API_PATH=/chat
 ```
 
@@ -35,7 +35,7 @@ kubectl -n zodiac port-forward svc/orion-ui 8081:80
 und dann [http://localhost:8081/](http://localhost:8081/) öffnen.
 
 ```
-kubectl -n zodiac port-forward svc/mcp-client-service 8000:8000 --address 0.0.0.0
+kubectl -n zodiac port-forward svc/mcp-client-service 8001:8001 --address 0.0.0.0
 ```
 ### How to open the UI in browser:
 1. Get the IP of the Cluster Node:
