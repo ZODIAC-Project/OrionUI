@@ -14,7 +14,7 @@
     <section class="panel settings">
       <div class="field">
         <label>Chat API Base URL</label>
-        <input v-model="apiBase" type="text" placeholder="http://localhost:8000" />
+        <input v-model="apiBase" type="text" placeholder="http://localhost:8001" />
       </div>
       <div class="field">
         <label>Chat API Pfad</label>

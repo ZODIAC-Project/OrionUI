@@ -36,7 +36,7 @@ spec:
         - name: regcred
       containers:
         - name: orion-ui
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui@sha256:9aea6489e27494da5d3a27c3e56d5c65ff7980a1290dd84fb0118d7e111c8aec
+          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui@sha256:5c61d29d8606a90a5100d3e901028e17b4fdddf5a5732a16d3fad4d62c14aece
           env:
           - name: VITE_CHAT_API_BASE
             value: "mcp-client-service:8001"
