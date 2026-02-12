@@ -28,6 +28,10 @@
         <label>Agent API Base URL</label>
         <input v-model="agentApiBase" type="text" placeholder="/agent-api" />
       </div>
+      <div class="field">
+        <label>Access Purposes</label>
+        <input v-model="accessPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
+      </div>
       <div class="hint">
         <span>Standard ist die FastAPI-Route <strong>/chat</strong> aus dem Ollama MCP Client.</span>
       </div>
@@ -108,6 +112,7 @@ const apiBase = ref(import.meta.env.VITE_CHAT_API_BASE || '/api')
 const apiPath = ref(import.meta.env.VITE_CHAT_API_PATH || '/chat')
 const sessionId = ref('')
 const agentApiBase = ref(import.meta.env.VITE_AGENT_API_BASE || '/agent-api')
+const accessPurposes = ref('')
 
 // Status targets (health-checked URLs). Initialize from envs and allow user edits.
 const STORAGE_KEY = 'orionui_status_targets'
@@ -205,7 +210,13 @@ const sendMessage = async () => {
       },
       body: JSON.stringify({
         message: text,
-        session_id: sessionId.value || null
+        session_id: sessionId.value || null,
+        purposes: accessPurposes.value
+          ? accessPurposes.value
+              .split(',')
+              .map((p) => p.trim())
+              .filter((p) => p)
+          : []
       })
     })
 
