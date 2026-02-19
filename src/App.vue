@@ -47,13 +47,19 @@
       </header>
 
       <form class="agent-form" @submit.prevent="createAgent">
-        <div class="field">
-          <label>Intervall (ms)</label>
-          <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" />
-        </div>
-        <div class="field">
-          <label>Text</label>
-          <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+        <div class="settings">
+          <div class="field">
+            <label>Intervall (ms)</label>
+            <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" />
+          </div>
+          <div class="field">
+            <label>Text</label>
+            <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+          </div>
+          <div class="field">
+            <label>Agent Access Purposes</label>
+            <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
+          </div>
         </div>
         <button type="submit" :disabled="agentLoading || !agentText.trim() || agentIntervalMs < 1000">
           Agent starten
@@ -163,6 +169,7 @@ const messageList = ref(null)
 const agents = reactive([])
 const agentIntervalMs = ref(5000)
 const agentText = ref('')
+const agentPurposes = ref('')
 const agentError = ref('')
 const agentLoading = ref(false)
 
@@ -274,7 +281,13 @@ const createAgent = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         intervalMs: agentIntervalMs.value,
-        text: agentText.value.trim()
+        text: agentText.value.trim(),
+        purposes: agentPurposes.value
+          ? agentPurposes.value
+              .split(',')
+              .map((p) => p.trim())
+              .filter((p) => p)
+          : []
       })
     })
     if (!res.ok) {
@@ -282,6 +295,7 @@ const createAgent = async () => {
       throw new Error(`HTTP ${res.status}: ${body}`)
     }
     agentText.value = ''
+    agentPurposes.value = ''
     await loadAgents()
   } catch (err) {
     agentError.value = err instanceof Error ? err.message : 'Fehler beim Erstellen des Agenten.'
