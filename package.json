@@ -11,6 +11,8 @@
   "dependencies": {
     "buffer": "^6.0.3",
     "mqtt": "^4.3.7",
+    "dompurify": "^3.3.1",
+    "marked": "^15.0.12",
     "vue": "^3.4.38"
   },
   "devDependencies": {

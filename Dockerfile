@@ -2,7 +2,13 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
+ENV NPM_CONFIG_OMIT=
+ENV NPM_CONFIG_INCLUDE=dev
+RUN npm config set production false \
+	&& npm config set omit "" \
+	&& npm ci --include=dev || npm install --include=dev
 COPY . .
 RUN npm run build
 

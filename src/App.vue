@@ -84,7 +84,8 @@
       <div class="messages" ref="messageList">
         <div v-for="(msg, idx) in messages" :key="idx" class="message" :class="msg.role">
           <div class="role">{{ msg.roleLabel }}</div>
-          <div class="content" v-text="msg.content"></div>
+          <div v-if="msg.role === 'assistant'" class="content" v-html="renderMarkdown(msg.content)"></div>
+          <div v-else class="content" v-text="msg.content"></div>
         </div>
         <div v-if="isSending" class="message assistant">
           <div class="role">assistant</div>
@@ -112,6 +113,8 @@
 
 <script setup>
 import { ref, reactive, nextTick, onMounted, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import StatusBar from './components/StatusBar.vue'
 
 const apiBase = ref(import.meta.env.VITE_CHAT_API_BASE || '/api')
@@ -186,6 +189,16 @@ const scrollToBottom = async () => {
   if (messageList.value) {
     messageList.value.scrollTop = messageList.value.scrollHeight
   }
+}
+
+marked.setOptions({
+  gfm: true,
+  breaks: true
+})
+
+const renderMarkdown = (value) => {
+  const raw = marked.parse(value ?? '')
+  return DOMPurify.sanitize(raw)
 }
 
 const clearChat = () => {
@@ -287,7 +300,9 @@ const createAgent = async () => {
               .split(',')
               .map((p) => p.trim())
               .filter((p) => p)
-          : []
+          : [],
+        chatApiBase: apiBase.value,
+        chatApiPath: apiPath.value
       })
     })
     if (!res.ok) {
@@ -504,6 +519,32 @@ onMounted(() => {
 
 .content {
   white-space: pre-wrap;
+}
+
+.content pre {
+  background: #0b0f15;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.content code {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.content pre {
+  background: #0b0f15;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.content code {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 }
 
 .typing {
