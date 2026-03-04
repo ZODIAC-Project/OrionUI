@@ -60,6 +60,31 @@
             <label>Agent Access Purposes</label>
             <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
           </div>
+          <div class="field">
+            <label>Smart Mode</label>
+            <select v-model="agentSmartMode">
+              <option value="balanced">balanced</option>
+              <option value="rag">rag</option>
+              <option value="planning">planning</option>
+              <option value="json">json</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tool Hints (optional)</label>
+            <input v-model="agentToolHints" type="text" placeholder="z. B. public_animal, list_devices" />
+          </div>
+          <div class="field">
+            <label>Memory Window</label>
+            <input v-model.number="agentMemoryWindow" type="number" min="1" max="20" step="1" placeholder="6" />
+          </div>
+          <div class="field">
+            <label>RAG Kontext (optional)</label>
+            <textarea v-model="agentRagContext" rows="3" placeholder="Wissensbasis-Text für Retrieval"></textarea>
+          </div>
+          <div class="field">
+            <label>JSON Schema Hint (optional)</label>
+            <textarea v-model="agentJsonSchema" rows="3" placeholder='{"type":"object","properties":{"summary":{"type":"string"}}}'></textarea>
+          </div>
         </div>
         <button type="submit" :disabled="agentLoading || !agentText.trim() || agentIntervalMs < 1000">
           Agent starten
@@ -72,7 +97,7 @@
         <div v-for="agent in agents" :key="agent.agentId" class="agent-card">
           <div>
             <div class="agent-title">{{ agent.agentId }}</div>
-            <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }}</div>
+            <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}</div>
           </div>
           <button class="ghost" type="button" @click="deleteAgent(agent.agentId)">Stoppen</button>
         </div>
@@ -173,6 +198,11 @@ const agents = reactive([])
 const agentIntervalMs = ref(5000)
 const agentText = ref('')
 const agentPurposes = ref('')
+const agentSmartMode = ref('balanced')
+const agentToolHints = ref('')
+const agentRagContext = ref('')
+const agentJsonSchema = ref('')
+const agentMemoryWindow = ref(6)
 const agentError = ref('')
 const agentLoading = ref(false)
 
@@ -301,6 +331,16 @@ const createAgent = async () => {
               .map((p) => p.trim())
               .filter((p) => p)
           : [],
+        smartMode: agentSmartMode.value,
+        toolHints: agentToolHints.value
+          ? agentToolHints.value
+              .split(',')
+              .map((item) => item.trim())
+              .filter((item) => item)
+          : [],
+        ragContext: agentRagContext.value,
+        jsonSchema: agentJsonSchema.value,
+        memoryWindow: Number(agentMemoryWindow.value) > 0 ? Number(agentMemoryWindow.value) : 6,
         chatApiBase: apiBase.value,
         chatApiPath: apiPath.value
       })
@@ -311,6 +351,7 @@ const createAgent = async () => {
     }
     agentText.value = ''
     agentPurposes.value = ''
+    agentToolHints.value = ''
     await loadAgents()
   } catch (err) {
     agentError.value = err instanceof Error ? err.message : 'Fehler beim Erstellen des Agenten.'
@@ -403,7 +444,9 @@ onMounted(() => {
   color: #9aa3b2;
 }
 
-.field input {
+.field input,
+.field select,
+.field textarea {
   background: #0c0f14;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
