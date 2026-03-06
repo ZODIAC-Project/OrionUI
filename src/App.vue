@@ -1,5 +1,57 @@
 <template>
-  <div class="app">
+  <div class="app" v-if="isAgentPage">
+    <section class="panel agents">
+      <header class="panel-header">
+        <div>
+          <h2>Agent-Verlauf</h2>
+          <p>{{ agentPageId }} · {{ agentHistory.length }} Eintraege</p>
+        </div>
+        <div class="actions">
+          <label class="refresh-toggle">
+            <input type="checkbox" v-model="agentAutoRefreshEnabled" />
+            Auto-Refresh
+          </label>
+          <select v-model.number="agentAutoRefreshMs" :disabled="!agentAutoRefreshEnabled || agentHistoryLoading">
+            <option :value="3000">3s</option>
+            <option :value="5000">5s</option>
+            <option :value="10000">10s</option>
+            <option :value="30000">30s</option>
+          </select>
+          <button class="ghost" type="button" @click="openMainPage">Zur Hauptansicht</button>
+          <button class="ghost" type="button" @click="loadAgentHistory(agentPageId)" :disabled="agentHistoryLoading">
+            Verlauf neu laden
+          </button>
+        </div>
+      </header>
+
+      <div v-if="agentHistoryError" class="error">{{ agentHistoryError }}</div>
+      <div v-else-if="agentHistoryLoading" class="empty">Verlauf wird geladen...</div>
+      <div v-else-if="!agentHistory.length" class="empty">Noch keine Historie fuer diesen Agenten.</div>
+
+      <div v-else class="history-list">
+        <article v-for="entry in agentHistory" :key="entry.timestamp + '-' + entry.jobId" class="history-item" :class="entry.status">
+          <div class="history-meta">
+            <span>{{ formatHistoryTime(entry.timestamp) }}</span>
+            <span class="status-pill">{{ entry.status === 'ok' ? 'ok' : 'error' }}</span>
+          </div>
+          <div class="history-block">
+            <div class="history-label">Agent Prompt</div>
+            <pre class="history-value">{{ entry.message || entry.text || '-' }}</pre>
+          </div>
+          <div class="history-block" v-if="entry.response">
+            <div class="history-label">Antwort</div>
+            <pre class="history-value">{{ entry.response }}</pre>
+          </div>
+          <div class="history-block" v-if="entry.error">
+            <div class="history-label">Fehler</div>
+            <pre class="history-value">{{ entry.error }}</pre>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div class="app" v-else>
     <StatusBar :targets="statusTargets" @update-target-url="updateTargetUrl" />
     <header class="topbar">
       <div>
@@ -94,12 +146,20 @@
       <div v-if="agentError" class="error">{{ agentError }}</div>
 
       <div class="agent-list" v-if="agents.length">
-        <div v-for="agent in agents" :key="agent.agentId" class="agent-card">
+        <div
+          v-for="agent in agents"
+          :key="agent.agentId"
+          class="agent-card"
+          role="button"
+          tabindex="0"
+          @click="openAgentHistoryTab(agent.agentId)"
+          @keydown.enter.prevent="openAgentHistoryTab(agent.agentId)"
+        >
           <div>
             <div class="agent-title">{{ agent.agentId }}</div>
             <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}</div>
           </div>
-          <button class="ghost" type="button" @click="deleteAgent(agent.agentId)">Stoppen</button>
+          <button class="ghost" type="button" @click.stop="deleteAgent(agent.agentId)">Stoppen</button>
         </div>
       </div>
       <div v-else class="empty">Noch keine Agenten aktiv.</div>
@@ -137,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted, computed } from 'vue'
+import { ref, reactive, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import StatusBar from './components/StatusBar.vue'
@@ -147,6 +207,7 @@ const apiPath = ref(import.meta.env.VITE_CHAT_API_PATH || '/chat')
 const sessionId = ref('')
 const agentApiBase = ref(import.meta.env.VITE_AGENT_API_BASE || '/agent-api')
 const accessPurposes = ref('')
+const agentPageId = ref(new URLSearchParams(window.location.search).get('agentId') || '')
 
 // Status targets (health-checked URLs). Initialize from envs and allow user edits.
 const STORAGE_KEY = 'orionui_status_targets'
@@ -205,6 +266,12 @@ const agentJsonSchema = ref('')
 const agentMemoryWindow = ref(6)
 const agentError = ref('')
 const agentLoading = ref(false)
+const agentHistory = ref([])
+const agentHistoryLoading = ref(false)
+const agentHistoryError = ref('')
+const agentAutoRefreshEnabled = ref(true)
+const agentAutoRefreshMs = ref(5000)
+const agentRefreshTimer = ref(null)
 
 const messages = reactive([
   {
@@ -213,6 +280,8 @@ const messages = reactive([
     content: 'Hallo! Stelle deine Frage und ich sende sie an den Ollama MCP Client.'
   }
 ])
+
+const isAgentPage = computed(() => Boolean(agentPageId.value))
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -229,6 +298,12 @@ marked.setOptions({
 const renderMarkdown = (value) => {
   const raw = marked.parse(value ?? '')
   return DOMPurify.sanitize(raw)
+}
+
+const normalizePath = (value) => {
+  const path = String(value ?? '').trim()
+  if (!path) return '/chat'
+  return path.startsWith('/') ? path : `/${path}`
 }
 
 const clearChat = () => {
@@ -252,15 +327,17 @@ const sendMessage = async () => {
   await scrollToBottom()
 
   try {
-    const base = apiBase.value.endsWith('/') ? apiBase.value.slice(0, -1) : apiBase.value
-    const response = await fetch(`${base}${apiPath.value}`, {
+    const baseInput = String(apiBase.value ?? '').trim()
+    const base = (baseInput || '/api').endsWith('/') ? (baseInput || '/api').slice(0, -1) : (baseInput || '/api')
+    const path = normalizePath(apiPath.value)
+    const response = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         message: text,
-        session_id: sessionId.value || null,
+        session_id: String(sessionId.value ?? '').trim() || 'orion-ui-session',
         purposes: accessPurposes.value
           ? accessPurposes.value
               .split(',')
@@ -293,6 +370,63 @@ const sendMessage = async () => {
 }
 
 const normalizeBase = (value) => (value.endsWith('/') ? value.slice(0, -1) : value)
+
+const openMainPage = () => {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('agentId')
+  window.location.href = url.toString()
+}
+
+const openAgentHistoryTab = (agentId) => {
+  const url = new URL(window.location.href)
+  url.searchParams.set('agentId', agentId)
+  window.open(url.toString(), '_blank', 'noopener')
+}
+
+const clearAgentRefreshTimer = () => {
+  if (agentRefreshTimer.value) {
+    window.clearInterval(agentRefreshTimer.value)
+    agentRefreshTimer.value = null
+  }
+}
+
+const configureAgentRefresh = () => {
+  clearAgentRefreshTimer()
+  if (!isAgentPage.value || !agentAutoRefreshEnabled.value) return
+  const interval = Number(agentAutoRefreshMs.value) > 0 ? Number(agentAutoRefreshMs.value) : 5000
+  agentRefreshTimer.value = window.setInterval(() => {
+    loadAgentHistory(agentPageId.value)
+  }, interval)
+}
+
+const formatHistoryTime = (timestamp) => {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return String(timestamp)
+  return date.toLocaleString('de-DE')
+}
+
+const loadAgentHistory = async (agentId) => {
+  if (!agentId) return
+  agentHistoryError.value = ''
+  agentHistoryLoading.value = true
+  try {
+    const base = normalizeBase(agentApiBase.value)
+    const res = await fetch(`${base}/agents/${agentId}/history?limit=80`)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+    const data = await res.json()
+    const list = Array.isArray(data?.history) ? data.history : []
+    agentHistory.value = list
+  } catch (err) {
+    agentHistory.value = []
+    agentHistoryError.value = err instanceof Error ? err.message : 'Fehler beim Laden des Agent-Verlaufs.'
+  } finally {
+    agentHistoryLoading.value = false
+  }
+}
 
 const loadAgents = async () => {
   agentError.value = ''
@@ -349,6 +483,7 @@ const createAgent = async () => {
       const body = await res.text()
       throw new Error(`HTTP ${res.status}: ${body}`)
     }
+    await res.json()
     agentText.value = ''
     agentPurposes.value = ''
     agentToolHints.value = ''
@@ -380,8 +515,23 @@ const deleteAgent = async (agentId) => {
 }
 
 onMounted(() => {
+  if (isAgentPage.value) {
+    document.title = `Agent ${agentPageId.value} Verlauf | Zodiac Chat`
+    loadAgentHistory(agentPageId.value)
+    configureAgentRefresh()
+    return
+  }
+  document.title = 'Zodiac Chat'
   loadAgents()
   loadStatusTargets()
+})
+
+watch([agentAutoRefreshEnabled, agentAutoRefreshMs], () => {
+  if (isAgentPage.value) configureAgentRefresh()
+})
+
+onUnmounted(() => {
+  clearAgentRefreshTimer()
 })
 </script>
 
@@ -415,6 +565,23 @@ onMounted(() => {
 .actions {
   display: flex;
   gap: 12px;
+  align-items: center;
+}
+
+.refresh-toggle {
+  font-size: 12px;
+  color: #b0b6c6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actions select {
+  background: #0c0f14;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e8ecf2;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .panel {
@@ -507,6 +674,7 @@ onMounted(() => {
   border-radius: 12px;
   background: #12151d;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
 }
 
 .agent-title {
@@ -524,6 +692,66 @@ onMounted(() => {
 .empty {
   color: #8b94a6;
   font-size: 13px;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.history-item {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #11151e;
+  padding: 10px 12px;
+}
+
+.history-item.error {
+  border-color: rgba(255, 92, 92, 0.35);
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #9aa3b2;
+}
+
+.status-pill {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+}
+
+.history-block {
+  margin-bottom: 8px;
+}
+
+.history-block:last-child {
+  margin-bottom: 0;
+}
+
+.history-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #95a0b5;
+  margin-bottom: 4px;
+}
+
+.history-value {
+  margin: 0;
+  white-space: pre-wrap;
+  background: #0c1016;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #d5dce9;
+  font-size: 12px;
 }
 
 .messages {
