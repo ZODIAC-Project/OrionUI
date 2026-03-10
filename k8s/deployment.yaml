@@ -76,7 +76,7 @@ spec:
         - name: regcred
       containers:
         - name: orion-ui
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui:latest
+          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui@sha256:535de536fa13e81e0b3303e9547b43802b51ed0cef66b68e97b015955d5f920b
           imagePullPolicy: Always
           env:
           - name: VITE_CHAT_API_BASE
@@ -213,7 +213,7 @@ spec:
         - name: regcred
       containers:
         - name: agent-worker
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/agent:latest
+          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/agent:0.1.0-cicd
           imagePullPolicy: Always
           command: ["npm", "run", "worker"]
           env:
