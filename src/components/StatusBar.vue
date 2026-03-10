@@ -140,13 +140,6 @@ function statusText(st) {
   return 'unbekannt'
 }
 
-// `id` is an optional identifier from the target entry.  the broker
-// exposes only a websocket endpoint and requires the "mqtt" sub‑protocol
-// for a successful handshake, so we propagate the id here and later
-// pick a protocol list for ws connections.
-// `targetId` is the optional identifier associated with a target entry.
-// we need a unique name here so it doesn't clash with the local `id`
-// variable used for the abort timeout later in the function.
 async function checkTarget(url, idx, targetId) {
   statuses[idx].status = 'checking'
   
@@ -171,10 +164,6 @@ async function checkTarget(url, idx, targetId) {
   }
 }
 
-// perform a bare websocket handshake.  if the URL is known to be the
-// broker (`targetId==='broker'`) we request the mqtt sub‑protocol so that the
-// hivezodiac broker will accept the connection; ordinary ws servers are
-// happy without it.
 function checkWs(url, idx, targetId) {
   // Clear any previous socket or timeout
   if (wsSockets[idx]) {
@@ -188,10 +177,6 @@ function checkWs(url, idx, targetId) {
 
   let opened = false
   try {
-    // supply the mqtt protocol for the broker entry (or whenever the
-    // URL itself suggests mqtt).  we avoid hard‑coding the string in
-    // the rendered health panel by relying on the target id, which is
-    // already set up in App.vue defaultTargets.
     const protocols = targetId === 'broker' || url.includes('mqtt') ? ['mqtt'] : undefined
     const ws = new WebSocket(url, protocols)
     wsSockets[idx] = ws
@@ -273,7 +258,6 @@ onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
 
-// expose refs if needed (not necessary but keeps pattern consistent)
 toRefs(statuses)
 </script>
 
