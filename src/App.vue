@@ -1,5 +1,5 @@
 <template>
-  <div class="app" v-if="isAgentPage">
+  <div class="app agent-page" v-if="isAgentPage">
     <section class="panel agents">
       <header class="panel-header">
         <div>
@@ -93,20 +93,39 @@
       <header class="panel-header">
         <div>
           <h2>Agenten</h2>
-          <p>Intervall-Agenten erzeugen zusätzlichen Traffic zum MCP-Client.</p>
+          <p>Intervall-Agenten erzeugen zusätzlichen Traffic zum MCP-Client. Angezeigt: {{ visibleAgents.length }} / {{ agents.length }}</p>
         </div>
         <button class="ghost" type="button" @click="loadAgents" :disabled="agentLoading">Neu laden</button>
       </header>
 
+      <div class="agent-filters">
+        <input v-model="agentSearch" type="text" placeholder="Agent-ID oder Prompt filtern..." />
+        <label class="refresh-toggle">
+          <input type="checkbox" v-model="showRunOnceAgents" />
+          Run-once anzeigen
+        </label>
+      </div>
+
       <form class="agent-form" @submit.prevent="createAgent">
         <div class="settings">
           <div class="field">
+            <label>Run Once</label>
+            <label class="refresh-toggle">
+              <input v-model="agentRunOnce" type="checkbox" />
+              Einmalig ausfuehren (ohne Intervall)
+            </label>
+          </div>
+          <div class="field">
             <label>Intervall (ms)</label>
-            <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" />
+            <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" :disabled="agentRunOnce" />
           </div>
           <div class="field">
             <label>Text</label>
             <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+          </div>
+          <div class="field">
+            <label>Handoff Targets (optional)</label>
+            <input v-model="agentHandoffTargets" type="text" placeholder="agent-id-1, agent-id-2" />
           </div>
           <div class="field">
             <label>Agent Access Purposes</label>
@@ -137,17 +156,25 @@
             <label>JSON Schema Hint (optional)</label>
             <textarea v-model="agentJsonSchema" rows="3" placeholder='{"type":"object","properties":{"summary":{"type":"string"}}}'></textarea>
           </div>
+          <div class="field">
+            <label>Spawn Agents JSON (optional)</label>
+            <textarea
+              v-model="agentSpawnAgentsJson"
+              rows="4"
+              placeholder='[{"runOnce":true,"text":"Child A: 7+5"},{"runOnce":true,"text":"Child B: 20-8"}]'
+            ></textarea>
+          </div>
         </div>
-        <button type="submit" :disabled="agentLoading || !agentText.trim() || agentIntervalMs < 1000">
+        <button type="submit" :disabled="agentLoading || !agentText.trim() || (!agentRunOnce && agentIntervalMs < 1000)">
           Agent starten
         </button>
       </form>
 
       <div v-if="agentError" class="error">{{ agentError }}</div>
 
-      <div class="agent-list" v-if="agents.length">
+      <div class="agent-list" v-if="visibleAgents.length">
         <div
-          v-for="agent in agents"
+          v-for="agent in visibleAgents"
           :key="agent.agentId"
           class="agent-card"
           role="button"
@@ -157,7 +184,9 @@
         >
           <div>
             <div class="agent-title">{{ agent.agentId }}</div>
-            <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}</div>
+            <div class="agent-meta">
+              {{ agent.runOnce ? 'run-once' : ((agent.intervalMs || '-') + ' ms') }} · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}
+            </div>
           </div>
           <button class="ghost" type="button" @click.stop="deleteAgent(agent.agentId)">Stoppen</button>
         </div>
@@ -257,7 +286,12 @@ const messageList = ref(null)
 
 const agents = reactive([])
 const agentIntervalMs = ref(5000)
+const agentRunOnce = ref(false)
+const agentSearch = ref('')
+const showRunOnceAgents = ref(true)
 const agentText = ref('')
+const agentHandoffTargets = ref('')
+const agentSpawnAgentsJson = ref('')
 const agentPurposes = ref('')
 const agentSmartMode = ref('balanced')
 const agentToolHints = ref('')
@@ -282,6 +316,17 @@ const messages = reactive([
 ])
 
 const isAgentPage = computed(() => Boolean(agentPageId.value))
+const visibleAgents = computed(() => {
+  const query = agentSearch.value.trim().toLowerCase()
+  return agents.filter((agent) => {
+    if (!showRunOnceAgents.value && agent?.runOnce) return false
+    if (!query) return true
+
+    const id = String(agent?.agentId || '').toLowerCase()
+    const text = String(agent?.text || '').toLowerCase()
+    return id.includes(query) || text.includes(query)
+  })
+})
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -452,13 +497,34 @@ const createAgent = async () => {
   agentError.value = ''
   agentLoading.value = true
   try {
+    let parsedSpawnAgents = []
+    if (agentSpawnAgentsJson.value.trim()) {
+      try {
+        const parsed = JSON.parse(agentSpawnAgentsJson.value)
+        if (!Array.isArray(parsed)) {
+          throw new Error('Spawn Agents JSON muss ein Array sein.')
+        }
+        parsedSpawnAgents = parsed
+      } catch (parseErr) {
+        throw new Error(parseErr instanceof Error ? parseErr.message : 'Spawn Agents JSON ist ungueltig.')
+      }
+    }
+
     const base = normalizeBase(agentApiBase.value)
     const res = await fetch(`${base}/agents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        intervalMs: agentIntervalMs.value,
+        runOnce: agentRunOnce.value,
+        intervalMs: agentRunOnce.value ? undefined : agentIntervalMs.value,
         text: agentText.value.trim(),
+        handoffTargets: agentHandoffTargets.value
+          ? agentHandoffTargets.value
+              .split(',')
+              .map((item) => item.trim())
+              .filter((item) => item)
+          : [],
+        spawnAgents: parsedSpawnAgents,
         purposes: agentPurposes.value
           ? agentPurposes.value
               .split(',')
@@ -484,7 +550,11 @@ const createAgent = async () => {
       throw new Error(`HTTP ${res.status}: ${body}`)
     }
     await res.json()
+
+    agentRunOnce.value = false
     agentText.value = ''
+    agentHandoffTargets.value = ''
+    agentSpawnAgentsJson.value = ''
     agentPurposes.value = ''
     agentToolHints.value = ''
     await loadAgents()
@@ -498,6 +568,7 @@ const createAgent = async () => {
 const deleteAgent = async (agentId) => {
   if (agentLoading.value) return
   agentError.value = ''
+
   agentLoading.value = true
   try {
     const base = normalizeBase(agentApiBase.value)
@@ -545,6 +616,13 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+.app.agent-page {
+  max-width: min(1600px, 96vw);
+  min-height: calc(100vh - 24px);
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -590,6 +668,12 @@ onUnmounted(() => {
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.app.agent-page .panel.agents {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 72px);
 }
 
 .settings {
@@ -665,6 +749,22 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.agent-filters {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.agent-filters input {
+  background: #0c0f14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #e8ecf2;
+}
+
 .agent-card {
   display: flex;
   align-items: center;
@@ -697,7 +797,9 @@ onUnmounted(() => {
 .history-list {
   display: grid;
   gap: 10px;
-  max-height: 360px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -882,6 +984,10 @@ button.ghost {
   }
 
   .agent-form {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-filters {
     grid-template-columns: 1fr;
   }
 
