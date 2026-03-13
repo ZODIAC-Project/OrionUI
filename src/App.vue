@@ -120,6 +120,13 @@
             <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" :disabled="agentRunOnce" />
           </div>
           <div class="field">
+            <label>No Tools</label>
+            <label class="refresh-toggle">
+              <input v-model="agentNoTools" type="checkbox" />
+              Harte Sperre fuer Tool-Nutzung
+            </label>
+          </div>
+          <div class="field">
             <label>Text</label>
             <input v-model="agentText" type="text" placeholder="z. B. health ping" />
           </div>
@@ -185,7 +192,7 @@
           <div>
             <div class="agent-title">{{ agent.agentId }}</div>
             <div class="agent-meta">
-              {{ agent.runOnce ? 'run-once' : ((agent.intervalMs || '-') + ' ms') }} · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}
+              {{ agent.runOnce ? 'run-once' : ((agent.intervalMs || '-') + ' ms') }} · {{ agent.noTools ? 'no-tools' : 'tools-enabled' }} · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}
             </div>
           </div>
           <button class="ghost" type="button" @click.stop="deleteAgent(agent.agentId)">Stoppen</button>
@@ -287,6 +294,7 @@ const messageList = ref(null)
 const agents = reactive([])
 const agentIntervalMs = ref(5000)
 const agentRunOnce = ref(false)
+const agentNoTools = ref(false)
 const agentSearch = ref('')
 const showRunOnceAgents = ref(true)
 const agentText = ref('')
@@ -516,6 +524,7 @@ const createAgent = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         runOnce: agentRunOnce.value,
+        noTools: agentNoTools.value,
         intervalMs: agentRunOnce.value ? undefined : agentIntervalMs.value,
         text: agentText.value.trim(),
         handoffTargets: agentHandoffTargets.value
@@ -552,6 +561,7 @@ const createAgent = async () => {
     await res.json()
 
     agentRunOnce.value = false
+    agentNoTools.value = false
     agentText.value = ''
     agentHandoffTargets.value = ''
     agentSpawnAgentsJson.value = ''
