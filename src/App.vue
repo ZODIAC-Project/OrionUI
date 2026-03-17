@@ -99,7 +99,10 @@
       </header>
 
       <div class="agent-filters">
-        <input v-model="agentSearch" type="text" placeholder="Agent-ID oder Prompt filtern..." />
+        <div class="field">
+          <label>Text</label>
+          <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+        </div>
         <label class="refresh-toggle">
           <input type="checkbox" v-model="showRunOnceAgents" />
           Run-once anzeigen
@@ -126,50 +129,62 @@
               Harte Sperre fuer Tool-Nutzung
             </label>
           </div>
-          <div class="field">
-            <label>Text</label>
-            <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+          <div class="agent-advanced-toggle">
+            <button class="ghost" type="button" @click="showAgentAdvanced = !showAgentAdvanced">
+              {{ showAgentAdvanced ? 'Mehr Optionen ausblenden' : 'Mehr Optionen einblenden' }}
+            </button>
           </div>
-          <div class="field">
-            <label>Handoff Targets (optional)</label>
-            <input v-model="agentHandoffTargets" type="text" placeholder="agent-id-1, agent-id-2" />
-          </div>
-          <div class="field">
-            <label>Agent Access Purposes</label>
-            <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
-          </div>
-          <div class="field">
-            <label>Smart Mode</label>
-            <select v-model="agentSmartMode">
-              <option value="balanced">balanced</option>
-              <option value="rag">rag</option>
-              <option value="planning">planning</option>
-              <option value="json">json</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Tool Hints (optional)</label>
-            <input v-model="agentToolHints" type="text" placeholder="z. B. public_animal, list_devices" />
-          </div>
-          <div class="field">
-            <label>Memory Window</label>
-            <input v-model.number="agentMemoryWindow" type="number" min="1" max="20" step="1" placeholder="6" />
-          </div>
-          <div class="field">
-            <label>RAG Kontext (optional)</label>
-            <textarea v-model="agentRagContext" rows="3" placeholder="Wissensbasis-Text für Retrieval"></textarea>
-          </div>
-          <div class="field">
-            <label>JSON Schema Hint (optional)</label>
-            <textarea v-model="agentJsonSchema" rows="3" placeholder='{"type":"object","properties":{"summary":{"type":"string"}}}'></textarea>
-          </div>
-          <div class="field">
-            <label>Spawn Agents JSON (optional)</label>
-            <textarea
-              v-model="agentSpawnAgentsJson"
-              rows="4"
-              placeholder='[{"runOnce":true,"text":"Child A: 7+5"},{"runOnce":true,"text":"Child B: 20-8"}]'
-            ></textarea>
+          <div v-show="showAgentAdvanced" class="agent-advanced">
+            <div class="field">
+              <label>Filter (Agent-ID oder Prompt)</label>
+              <input
+                v-model="agentSearch"
+                type="text"
+                placeholder="Agent-ID oder Prompt filtern..."
+                @keydown.enter.exact.prevent
+              />
+            </div>
+            <div class="field">
+              <label>Handoff Targets (optional)</label>
+              <input v-model="agentHandoffTargets" type="text" placeholder="agent-id-1, agent-id-2" />
+            </div>
+            <div class="field">
+              <label>Agent Access Purposes</label>
+              <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
+            </div>
+            <div class="field">
+              <label>Smart Mode</label>
+              <select v-model="agentSmartMode">
+                <option value="balanced">balanced</option>
+                <option value="rag">rag</option>
+                <option value="planning">planning</option>
+                <option value="json">json</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tool Hints (optional)</label>
+              <input v-model="agentToolHints" type="text" placeholder="z. B. public_animal, list_devices" />
+            </div>
+            <div class="field">
+              <label>Memory Window</label>
+              <input v-model.number="agentMemoryWindow" type="number" min="1" max="20" step="1" placeholder="6" />
+            </div>
+            <div class="field">
+              <label>RAG Kontext (optional)</label>
+              <textarea v-model="agentRagContext" rows="3" placeholder="Wissensbasis-Text für Retrieval"></textarea>
+            </div>
+            <div class="field">
+              <label>JSON Schema Hint (optional)</label>
+              <textarea v-model="agentJsonSchema" rows="3" placeholder='{"type":"object","properties":{"summary":{"type":"string"}}}'></textarea>
+            </div>
+            <div class="field">
+              <label>Spawn Agents JSON (optional)</label>
+              <textarea
+                v-model="agentSpawnAgentsJson"
+                rows="4"
+                placeholder='[{"runOnce":true,"text":"Child A: 7+5"},{"runOnce":true,"text":"Child B: 20-8"}]'
+              ></textarea>
+            </div>
           </div>
         </div>
         <button type="submit" :disabled="agentLoading || !agentText.trim() || (!agentRunOnce && agentIntervalMs < 1000)">
@@ -306,6 +321,7 @@ const agentToolHints = ref('')
 const agentRagContext = ref('')
 const agentJsonSchema = ref('')
 const agentMemoryWindow = ref(6)
+const showAgentAdvanced = ref(false)
 const agentError = ref('')
 const agentLoading = ref(false)
 const agentHistory = ref([])
@@ -713,6 +729,17 @@ onUnmounted(() => {
   border-radius: 10px;
   padding: 10px 12px;
   color: #e8ecf2;
+}
+
+.agent-advanced-toggle,
+.agent-advanced {
+  grid-column: 1 / -1;
+}
+
+.agent-advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
 }
 
 .hint {
