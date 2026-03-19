@@ -1,5 +1,57 @@
 <template>
-  <div class="app">
+  <div class="app agent-page" v-if="isAgentPage">
+    <section class="panel agents">
+      <header class="panel-header">
+        <div>
+          <h2>Agent-Verlauf</h2>
+          <p>{{ agentPageId }} · {{ agentHistory.length }} Eintraege</p>
+        </div>
+        <div class="actions">
+          <label class="refresh-toggle">
+            <input type="checkbox" v-model="agentAutoRefreshEnabled" />
+            Auto-Refresh
+          </label>
+          <select v-model.number="agentAutoRefreshMs" :disabled="!agentAutoRefreshEnabled || agentHistoryLoading">
+            <option :value="3000">3s</option>
+            <option :value="5000">5s</option>
+            <option :value="10000">10s</option>
+            <option :value="30000">30s</option>
+          </select>
+          <button class="ghost" type="button" @click="openMainPage">Zur Hauptansicht</button>
+          <button class="ghost" type="button" @click="loadAgentHistory(agentPageId)" :disabled="agentHistoryLoading">
+            Verlauf neu laden
+          </button>
+        </div>
+      </header>
+
+      <div v-if="agentHistoryError" class="error">{{ agentHistoryError }}</div>
+      <div v-else-if="agentHistoryLoading" class="empty">Verlauf wird geladen...</div>
+      <div v-else-if="!agentHistory.length" class="empty">Noch keine Historie fuer diesen Agenten.</div>
+
+      <div v-else class="history-list">
+        <article v-for="entry in agentHistory" :key="entry.timestamp + '-' + entry.jobId" class="history-item" :class="entry.status">
+          <div class="history-meta">
+            <span>{{ formatHistoryTime(entry.timestamp) }}</span>
+            <span class="status-pill">{{ entry.status === 'ok' ? 'ok' : 'error' }}</span>
+          </div>
+          <div class="history-block">
+            <div class="history-label">Agent Prompt</div>
+            <pre class="history-value">{{ entry.message || entry.text || '-' }}</pre>
+          </div>
+          <div class="history-block" v-if="entry.response">
+            <div class="history-label">Antwort</div>
+            <pre class="history-value">{{ entry.response }}</pre>
+          </div>
+          <div class="history-block" v-if="entry.error">
+            <div class="history-label">Fehler</div>
+            <pre class="history-value">{{ entry.error }}</pre>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div class="app" v-else>
     <StatusBar :targets="statusTargets" @update-target-url="updateTargetUrl" />
     <header class="topbar">
       <div>
@@ -45,40 +97,124 @@
       <header class="panel-header">
         <div>
           <h2>Agenten</h2>
-          <p>Intervall-Agenten erzeugen zusätzlichen Traffic zum MCP-Client.</p>
+          <p>Intervall-Agenten erzeugen zusätzlichen Traffic zum MCP-Client. Angezeigt: {{ visibleAgents.length }} / {{ agents.length }}</p>
         </div>
         <button class="ghost" type="button" @click="loadAgents" :disabled="agentLoading">Neu laden</button>
       </header>
 
+      <div class="agent-filters">
+        <div class="field">
+          <label>Text</label>
+          <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+        </div>
+        <label class="refresh-toggle">
+          <input type="checkbox" v-model="showRunOnceAgents" />
+          Run-once anzeigen
+        </label>
+      </div>
+
       <form class="agent-form" @submit.prevent="createAgent">
         <div class="settings">
           <div class="field">
+            <label>Run Once</label>
+            <label class="refresh-toggle">
+              <input v-model="agentRunOnce" type="checkbox" />
+              Einmalig ausfuehren (ohne Intervall)
+            </label>
+          </div>
+          <div class="field">
             <label>Intervall (ms)</label>
-            <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" />
+            <input v-model.number="agentIntervalMs" type="number" min="1000" step="500" placeholder="5000" :disabled="agentRunOnce" />
           </div>
           <div class="field">
-            <label>Text</label>
-            <input v-model="agentText" type="text" placeholder="z. B. health ping" />
+            <label>No Tools</label>
+            <label class="refresh-toggle">
+              <input v-model="agentNoTools" type="checkbox" />
+              Harte Sperre fuer Tool-Nutzung
+            </label>
           </div>
-          <div class="field">
-            <label>Agent Access Purposes</label>
-            <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
+          <div class="agent-advanced-toggle">
+            <button class="ghost" type="button" @click="showAgentAdvanced = !showAgentAdvanced">
+              {{ showAgentAdvanced ? 'Mehr Optionen ausblenden' : 'Mehr Optionen einblenden' }}
+            </button>
+          </div>
+          <div v-show="showAgentAdvanced" class="agent-advanced">
+            <div class="field">
+              <label>Filter (Agent-ID oder Prompt)</label>
+              <input
+                v-model="agentSearch"
+                type="text"
+                placeholder="Agent-ID oder Prompt filtern..."
+                @keydown.enter.exact.prevent
+              />
+            </div>
+            <div class="field">
+              <label>Handoff Targets (optional)</label>
+              <input v-model="agentHandoffTargets" type="text" placeholder="agent-id-1, agent-id-2" />
+            </div>
+            <div class="field">
+              <label>Agent Access Purposes</label>
+              <input v-model="agentPurposes" type="text" placeholder="z. B. purpose1, purpose2" />
+            </div>
+            <div class="field">
+              <label>Smart Mode</label>
+              <select v-model="agentSmartMode">
+                <option value="balanced">balanced</option>
+                <option value="rag">rag</option>
+                <option value="planning">planning</option>
+                <option value="json">json</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tool Hints (optional)</label>
+              <input v-model="agentToolHints" type="text" placeholder="z. B. public_animal, list_devices" />
+            </div>
+            <div class="field">
+              <label>Memory Window</label>
+              <input v-model.number="agentMemoryWindow" type="number" min="1" max="20" step="1" placeholder="6" />
+            </div>
+            <div class="field">
+              <label>RAG Kontext (optional)</label>
+              <textarea v-model="agentRagContext" rows="3" placeholder="Wissensbasis-Text für Retrieval"></textarea>
+            </div>
+            <div class="field">
+              <label>JSON Schema Hint (optional)</label>
+              <textarea v-model="agentJsonSchema" rows="3" placeholder='{"type":"object","properties":{"summary":{"type":"string"}}}'></textarea>
+            </div>
+            <div class="field">
+              <label>Spawn Agents JSON (optional)</label>
+              <textarea
+                v-model="agentSpawnAgentsJson"
+                rows="4"
+                placeholder='[{"runOnce":true,"text":"Child A: 7+5"},{"runOnce":true,"text":"Child B: 20-8"}]'
+              ></textarea>
+            </div>
           </div>
         </div>
-        <button type="submit" :disabled="agentLoading || !agentText.trim() || agentIntervalMs < 1000">
+        <button type="submit" :disabled="agentLoading || !agentText.trim() || (!agentRunOnce && agentIntervalMs < 1000)">
           Agent starten
         </button>
       </form>
 
       <div v-if="agentError" class="error">{{ agentError }}</div>
 
-      <div class="agent-list" v-if="agents.length">
-        <div v-for="agent in agents" :key="agent.agentId" class="agent-card">
+      <div class="agent-list" v-if="visibleAgents.length">
+        <div
+          v-for="agent in visibleAgents"
+          :key="agent.agentId"
+          class="agent-card"
+          role="button"
+          tabindex="0"
+          @click="openAgentHistoryTab(agent.agentId)"
+          @keydown.enter.prevent="openAgentHistoryTab(agent.agentId)"
+        >
           <div>
             <div class="agent-title">{{ agent.agentId }}</div>
-            <div class="agent-meta">{{ agent.intervalMs }} ms · {{ agent.text }}</div>
+            <div class="agent-meta">
+              {{ agent.runOnce ? 'run-once' : ((agent.intervalMs || '-') + ' ms') }} · {{ agent.noTools ? 'no-tools' : 'tools-enabled' }} · {{ agent.text }} · mode: {{ agent.smartMode || 'balanced' }}
+            </div>
           </div>
-          <button class="ghost" type="button" @click="deleteAgent(agent.agentId)">Stoppen</button>
+          <button class="ghost" type="button" @click.stop="deleteAgent(agent.agentId)">Stoppen</button>
         </div>
       </div>
       <div v-else class="empty">Noch keine Agenten aktiv.</div>
@@ -116,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted, computed } from 'vue'
+import { ref, reactive, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import StatusBar from './components/StatusBar.vue'
@@ -152,6 +288,7 @@ const copySessionId = async () => {
 }
 const agentApiBase = ref(import.meta.env.VITE_AGENT_API_BASE || '/agent-api')
 const accessPurposes = ref('')
+const agentPageId = ref(new URLSearchParams(window.location.search).get('agentId') || '')
 
 // Status targets (health-checked URLs). Initialize from envs and allow user edits.
 const STORAGE_KEY = 'orionui_status_targets'
@@ -201,10 +338,28 @@ const messageList = ref(null)
 
 const agents = reactive([])
 const agentIntervalMs = ref(5000)
+const agentRunOnce = ref(false)
+const agentNoTools = ref(false)
+const agentSearch = ref('')
+const showRunOnceAgents = ref(true)
 const agentText = ref('')
+const agentHandoffTargets = ref('')
+const agentSpawnAgentsJson = ref('')
 const agentPurposes = ref('')
+const agentSmartMode = ref('balanced')
+const agentToolHints = ref('')
+const agentRagContext = ref('')
+const agentJsonSchema = ref('')
+const agentMemoryWindow = ref(6)
+const showAgentAdvanced = ref(false)
 const agentError = ref('')
 const agentLoading = ref(false)
+const agentHistory = ref([])
+const agentHistoryLoading = ref(false)
+const agentHistoryError = ref('')
+const agentAutoRefreshEnabled = ref(true)
+const agentAutoRefreshMs = ref(5000)
+const agentRefreshTimer = ref(null)
 
 const messages = reactive([
   {
@@ -213,6 +368,19 @@ const messages = reactive([
     content: 'Hallo! Stelle deine Frage und ich sende sie an den Ollama MCP Client.'
   }
 ])
+
+const isAgentPage = computed(() => Boolean(agentPageId.value))
+const visibleAgents = computed(() => {
+  const query = agentSearch.value.trim().toLowerCase()
+  return agents.filter((agent) => {
+    if (!showRunOnceAgents.value && agent?.runOnce) return false
+    if (!query) return true
+
+    const id = String(agent?.agentId || '').toLowerCase()
+    const text = String(agent?.text || '').toLowerCase()
+    return id.includes(query) || text.includes(query)
+  })
+})
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -229,6 +397,12 @@ marked.setOptions({
 const renderMarkdown = (value) => {
   const raw = marked.parse(value ?? '')
   return DOMPurify.sanitize(raw)
+}
+
+const normalizePath = (value) => {
+  const path = String(value ?? '').trim()
+  if (!path) return '/chat'
+  return path.startsWith('/') ? path : `/${path}`
 }
 
 const clearChat = () => {
@@ -254,15 +428,17 @@ const sendMessage = async () => {
   await scrollToBottom()
 
   try {
-    const base = apiBase.value.endsWith('/') ? apiBase.value.slice(0, -1) : apiBase.value
-    const response = await fetch(`${base}${apiPath.value}`, {
+    const baseInput = String(apiBase.value ?? '').trim()
+    const base = (baseInput || '/api').endsWith('/') ? (baseInput || '/api').slice(0, -1) : (baseInput || '/api')
+    const path = normalizePath(apiPath.value)
+    const response = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         message: text,
-        session_id: sessionId.value || null,
+        session_id: String(sessionId.value ?? '').trim() || 'orion-ui-session',
         purposes: accessPurposes.value
           ? accessPurposes.value
               .split(',')
@@ -296,6 +472,63 @@ const sendMessage = async () => {
 
 const normalizeBase = (value) => (value.endsWith('/') ? value.slice(0, -1) : value)
 
+const openMainPage = () => {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('agentId')
+  window.location.href = url.toString()
+}
+
+const openAgentHistoryTab = (agentId) => {
+  const url = new URL(window.location.href)
+  url.searchParams.set('agentId', agentId)
+  window.open(url.toString(), '_blank', 'noopener')
+}
+
+const clearAgentRefreshTimer = () => {
+  if (agentRefreshTimer.value) {
+    window.clearInterval(agentRefreshTimer.value)
+    agentRefreshTimer.value = null
+  }
+}
+
+const configureAgentRefresh = () => {
+  clearAgentRefreshTimer()
+  if (!isAgentPage.value || !agentAutoRefreshEnabled.value) return
+  const interval = Number(agentAutoRefreshMs.value) > 0 ? Number(agentAutoRefreshMs.value) : 5000
+  agentRefreshTimer.value = window.setInterval(() => {
+    loadAgentHistory(agentPageId.value)
+  }, interval)
+}
+
+const formatHistoryTime = (timestamp) => {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return String(timestamp)
+  return date.toLocaleString('de-DE')
+}
+
+const loadAgentHistory = async (agentId) => {
+  if (!agentId) return
+  agentHistoryError.value = ''
+  agentHistoryLoading.value = true
+  try {
+    const base = normalizeBase(agentApiBase.value)
+    const res = await fetch(`${base}/agents/${agentId}/history?limit=80`)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+    const data = await res.json()
+    const list = Array.isArray(data?.history) ? data.history : []
+    agentHistory.value = list
+  } catch (err) {
+    agentHistory.value = []
+    agentHistoryError.value = err instanceof Error ? err.message : 'Fehler beim Laden des Agent-Verlaufs.'
+  } finally {
+    agentHistoryLoading.value = false
+  }
+}
+
 const loadAgents = async () => {
   agentError.value = ''
   agentLoading.value = true
@@ -320,19 +553,51 @@ const createAgent = async () => {
   agentError.value = ''
   agentLoading.value = true
   try {
+    let parsedSpawnAgents = []
+    if (agentSpawnAgentsJson.value.trim()) {
+      try {
+        const parsed = JSON.parse(agentSpawnAgentsJson.value)
+        if (!Array.isArray(parsed)) {
+          throw new Error('Spawn Agents JSON muss ein Array sein.')
+        }
+        parsedSpawnAgents = parsed
+      } catch (parseErr) {
+        throw new Error(parseErr instanceof Error ? parseErr.message : 'Spawn Agents JSON ist ungueltig.')
+      }
+    }
+
     const base = normalizeBase(agentApiBase.value)
     const res = await fetch(`${base}/agents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        intervalMs: agentIntervalMs.value,
+        runOnce: agentRunOnce.value,
+        noTools: agentNoTools.value,
+        intervalMs: agentRunOnce.value ? undefined : agentIntervalMs.value,
         text: agentText.value.trim(),
+        handoffTargets: agentHandoffTargets.value
+          ? agentHandoffTargets.value
+              .split(',')
+              .map((item) => item.trim())
+              .filter((item) => item)
+          : [],
+        spawnAgents: parsedSpawnAgents,
         purposes: agentPurposes.value
           ? agentPurposes.value
               .split(',')
               .map((p) => p.trim())
               .filter((p) => p)
           : [],
+        smartMode: agentSmartMode.value,
+        toolHints: agentToolHints.value
+          ? agentToolHints.value
+              .split(',')
+              .map((item) => item.trim())
+              .filter((item) => item)
+          : [],
+        ragContext: agentRagContext.value,
+        jsonSchema: agentJsonSchema.value,
+        memoryWindow: Number(agentMemoryWindow.value) > 0 ? Number(agentMemoryWindow.value) : 6,
         chatApiBase: apiBase.value,
         chatApiPath: apiPath.value
       })
@@ -341,8 +606,15 @@ const createAgent = async () => {
       const body = await res.text()
       throw new Error(`HTTP ${res.status}: ${body}`)
     }
+    await res.json()
+
+    agentRunOnce.value = false
+    agentNoTools.value = false
     agentText.value = ''
+    agentHandoffTargets.value = ''
+    agentSpawnAgentsJson.value = ''
     agentPurposes.value = ''
+    agentToolHints.value = ''
     await loadAgents()
   } catch (err) {
     agentError.value = err instanceof Error ? err.message : 'Fehler beim Erstellen des Agenten.'
@@ -354,6 +626,7 @@ const createAgent = async () => {
 const deleteAgent = async (agentId) => {
   if (agentLoading.value) return
   agentError.value = ''
+
   agentLoading.value = true
   try {
     const base = normalizeBase(agentApiBase.value)
@@ -371,8 +644,23 @@ const deleteAgent = async (agentId) => {
 }
 
 onMounted(() => {
+  if (isAgentPage.value) {
+    document.title = `Agent ${agentPageId.value} Verlauf | Zodiac Chat`
+    loadAgentHistory(agentPageId.value)
+    configureAgentRefresh()
+    return
+  }
+  document.title = 'Zodiac Chat'
   loadAgents()
   loadStatusTargets()
+})
+
+watch([agentAutoRefreshEnabled, agentAutoRefreshMs], () => {
+  if (isAgentPage.value) configureAgentRefresh()
+})
+
+onUnmounted(() => {
+  clearAgentRefreshTimer()
 })
 </script>
 
@@ -384,6 +672,13 @@ onMounted(() => {
   padding: 32px;
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.app.agent-page {
+  max-width: min(1600px, 96vw);
+  min-height: calc(100vh - 24px);
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .topbar {
@@ -406,6 +701,23 @@ onMounted(() => {
 .actions {
   display: flex;
   gap: 12px;
+  align-items: center;
+}
+
+.refresh-toggle {
+  font-size: 12px;
+  color: #b0b6c6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actions select {
+  background: #0c0f14;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e8ecf2;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .panel {
@@ -414,6 +726,12 @@ onMounted(() => {
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.app.agent-page .panel.agents {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 72px);
 }
 
 .settings {
@@ -435,12 +753,25 @@ onMounted(() => {
   color: #9aa3b2;
 }
 
-.field input {
+.field input,
+.field select,
+.field textarea {
   background: #0c0f14;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 10px 12px;
   color: #e8ecf2;
+}
+
+.agent-advanced-toggle,
+.agent-advanced {
+  grid-column: 1 / -1;
+}
+
+.agent-advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
 }
 
 .hint {
@@ -487,6 +818,22 @@ onMounted(() => {
   gap: 12px;
 }
 
+.agent-filters {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.agent-filters input {
+  background: #0c0f14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #e8ecf2;
+}
+
 .agent-card {
   display: flex;
   align-items: center;
@@ -496,6 +843,7 @@ onMounted(() => {
   border-radius: 12px;
   background: #12151d;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
 }
 
 .agent-title {
@@ -513,6 +861,68 @@ onMounted(() => {
 .empty {
   color: #8b94a6;
   font-size: 13px;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.history-item {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #11151e;
+  padding: 10px 12px;
+}
+
+.history-item.error {
+  border-color: rgba(255, 92, 92, 0.35);
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #9aa3b2;
+}
+
+.status-pill {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+}
+
+.history-block {
+  margin-bottom: 8px;
+}
+
+.history-block:last-child {
+  margin-bottom: 0;
+}
+
+.history-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #95a0b5;
+  margin-bottom: 4px;
+}
+
+.history-value {
+  margin: 0;
+  white-space: pre-wrap;
+  background: #0c1016;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #d5dce9;
+  font-size: 12px;
 }
 
 .messages {
@@ -643,6 +1053,10 @@ button.ghost {
   }
 
   .agent-form {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-filters {
     grid-template-columns: 1fr;
   }
 

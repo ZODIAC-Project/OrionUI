@@ -67,8 +67,6 @@ spec:
   selector:
     matchLabels:
       app: orion-ui
-  template:
-    metadata:
       labels:
         app: orion-ui
     spec:
