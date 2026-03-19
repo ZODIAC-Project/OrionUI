@@ -1,25 +1,29 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
-export default defineConfig({
-  plugins: [vue(), nodePolyfills()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      },
-      '/agent-api': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/agent-api/, '')
-      },
-      '/chat': {
-        target: 'http://localhost:8001',
-        changeOrigin: true
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd())
+
+  return {
+    plugins: [vue(), nodePolyfills()],
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: env.VITE_CHAT_API_BASE || 'http://127.0.0.1:8001',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        },
+        '/agent-api': {
+          target: env.VITE_AGENT_API_BASE || 'http://127.0.0.1:3000',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/agent-api/, '')
+        },
+        '/chat': {
+          target: env.VITE_CHAT_API_BASE || 'http://localhost:8001',
+          changeOrigin: true
+        }
       }
     }
   }
