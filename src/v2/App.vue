@@ -55,7 +55,7 @@
 <script setup>
 import { ref, reactive, nextTick, onMounted } from 'vue'
 
-const MCP_URL = "http://130.149.158.32:30084/chat";
+const MCP_URL = "http://130.149.158.32:30084";
 const MCP_CHAT_URL = `${MCP_URL}/chat`;
 const MCP_HEALTH_URL = `${MCP_URL}/health`;
 
