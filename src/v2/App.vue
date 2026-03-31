@@ -113,8 +113,11 @@ const sendMessage = async () => {
   let text = msgText.value.trim();
   msgText.value = '';
   addMessage('user', text);
+
+  let response;
+
   try {
-    const response = await fetch(MCP_CHAT_URL, {
+    response = await fetch(MCP_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -132,26 +135,32 @@ const sendMessage = async () => {
     })
   } catch (e) {
     addMessage('error', String(e));
-    return;
-  } finally {
     isSending.value = false;
+    return;
   }
 
   if (!response.ok) {
-    const body = await response.text()
+    const body = await response.text();
     addMessage('error', String(`HTTP ${response.status}: ${body}`));
+    isSending.value = false;
     return;
   }
 
-  const data = await response.json()
-  addMessage('assistant', String(data?.response ?? ''));
+  try {
+    const data = await response.json();
+    addMessage('assistant', String(data?.response ?? ''));
+  } catch (e) {
+    addMessage('error', 'Failed to parse JSON response');
+  } finally {
+    isSending.value = false;
+  }
 }
 
 const clearChat = () => {
   messages.splice(0, messages.length, {
     role: 'assistant',
-    roleLabel: 'assistant',
-    content: 'Chat zurückgesetzt. Wie kann ich helfen?'
+    content: 'Chat zurückgesetzt. Wie kann ich helfen?',
+    timestamp: Date.now(),
   })
   // start a new session for the new chat
   sessionId.value = generateSessionId()
