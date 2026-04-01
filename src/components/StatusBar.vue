@@ -9,7 +9,14 @@
         <div class="item-left">
           <div class="dot" :class="dotClass(statuses[i]?.status)" aria-hidden="true"></div>
           <div class="label-block">
-            <div class="label">{{ t.label || (t.url === 'URL nicht gesetzt' ? 'URL nicht gesetzt' : shortUrl(t.url)) }}</div>
+            <div class="label">
+              <template v-if="t.id === 'grafana' && t.url && t.url !== 'URL nicht gesetzt'">
+                <span class="grafana-link" @click="$emit('open-grafana', t.url)" style="cursor:pointer; color:#2ecc71; text-decoration:underline;">{{ t.label }}</span>
+              </template>
+              <template v-else>
+                {{ t.label || (t.url === 'URL nicht gesetzt' ? 'URL nicht gesetzt' : shortUrl(t.url)) }}
+              </template>
+            </div>
             <div class="url-edit-wrap">
               <input
                 class="url-input"

@@ -52,7 +52,20 @@
   </div>
 
   <div class="app" v-else>
-    <StatusBar :targets="statusTargets" @update-target-url="updateTargetUrl" />
+    <StatusBar :targets="statusTargets" @update-target-url="updateTargetUrl" @open-grafana="toggleGrafanaDashboard" />
+
+    <div v-if="showGrafanaDashboard" class="grafana-dashboard-wrap">
+      <div class="grafana-dashboard-inner">
+        <iframe
+          :src="grafanaDashboardUrl"
+          class="grafana-iframe"
+          frameborder="0"
+          @error="onGrafanaIframeError"
+          @load="onGrafanaIframeLoad"
+        ></iframe>
+        <div v-if="grafanaIframeError" class="grafana-error">Fehler beim Laden des Grafana Dashboards.</div>
+      </div>
+    </div>
     <header class="topbar">
       <div>
         <h1>Zodiac Chat</h1>
@@ -248,6 +261,32 @@
 </template>
 
 <script setup>
+// ...existing imports and code...
+
+const showGrafanaDashboard = ref(false)
+const grafanaIframeError = ref(false)
+const grafanaDashboardUrl = computed(() => {
+  // Use the hardcoded default or from statusTargets
+  const grafana = statusTargets.value.find(t => t.id === 'grafana')
+  return grafana && grafana.url && grafana.url !== 'URL nicht gesetzt'
+    ? grafana.url + '/d/agent-monitoring/agent-monitoring?orgId=1&refresh=10s'
+    : ''
+})
+
+const toggleGrafanaDashboard = (url) => {
+  if (!grafanaDashboardUrl.value) return
+  // Toggle visibility
+  showGrafanaDashboard.value = !showGrafanaDashboard.value
+  // Reset error state when opening
+  if (showGrafanaDashboard.value) grafanaIframeError.value = false
+}
+
+const onGrafanaIframeError = () => {
+  grafanaIframeError.value = true
+}
+const onGrafanaIframeLoad = () => {
+  grafanaIframeError.value = false
+}
 import { ref, reactive, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -265,7 +304,8 @@ const STORAGE_KEY = 'orionui_status_targets'
 const defaultTargets = [
   { id: 'broker', label: 'Broker', url: import.meta.env.VITE_BROKER_URL || 'URL nicht gesetzt' },
   { id: 'clients', label: 'MCP Clients', url: import.meta.env.VITE_MCP_CLIENT_URL || 'URL nicht gesetzt' },
-  { id: 'llm', label: 'LLM', url: import.meta.env.VITE_LLM_URL || 'URL nicht gesetzt' }
+  { id: 'llm', label: 'LLM', url: import.meta.env.VITE_LLM_URL || 'URL nicht gesetzt' },
+  { id: 'grafana', label: 'Grafana', url: 'http://localhost:3001' }
 ]
 
 const statusTargets = ref([])
@@ -647,6 +687,33 @@ onUnmounted(() => {
   min-height: calc(100vh - 24px);
   padding-top: 16px;
   padding-bottom: 16px;
+}
+
+.grafana-dashboard-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.grafana-dashboard-inner {
+  width: 100%;
+  max-width: 1100px;
+  background: #181c24;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  padding: 12px;
+  position: relative;
+}
+.grafana-iframe {
+  width: 100%;
+  min-height: 480px;
+  border: none;
+  border-radius: 8px;
+  background: #222;
+}
+.grafana-error {
+  color: #ff6b6b;
+  margin-top: 8px;
+  text-align: center;
 }
 
 .topbar {
