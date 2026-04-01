@@ -164,8 +164,8 @@ import { ref, reactive, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
 const MCP_URL = "http://130.149.158.32:30084";
 
-//const AGENT_URL = "http://130.149.158.132:30085";
-const AGENT_URL = "http://127.0.0.1:8000";
+const AGENT_URL = "http://130.149.158.133:30086";
+//const AGENT_URL = "http://127.0.0.1:8000";
 
 const runOnce = ref(false);
 const historyView = ref(null);
