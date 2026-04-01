@@ -80,8 +80,8 @@
               <span style="opacity:0.5">{{ purpose }}</span>
             </div>
             <div class="spacer"></div>
-            <img src="../assets/icons/eye.png" class="icon" @click="historyView = agent" />
-            <img src="../assets/icons/trash.png" class="icon" @click="deleteAgent(agent.id)" />
+            <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
+            <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
           </div>
         </div>
         <div v-else class="message-wrapper" style="height: 100%; margin:0px">
@@ -153,7 +153,26 @@
       </div>
     </div>
     <div class="column">
-
+      <div class="minioptionbox"
+        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
+        <input type="button" class="minibutton" value="clear tool use history" @click="toolHistory.length = 0" />
+      </div>
+      <div class="msgbox">
+        <div v-for="(toolUse, index) in toolHistory" :key="index" class="message-wrapper">
+          <div class="message-header" :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
+            <img v-if="toolUse.accepted" src="../assets/icons/check.png" class="icon" />
+            <img v-else src="../assets/icons/trash.png" class="icon" />
+            <div class="role-label" style="padding-left:0px">{{ toolUse.tool }}</div>
+            <div class="spacer"></div>
+          </div>
+          <div v-if="toolUse.parameters && Object.keys(toolUse.parameters).length > 0" class="message-body"
+            :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
+            <div v-for="(value, key) in toolUse.parameters" :key="key">
+              <span style="font-weight: 600;">{{ key }}:</span> {{ value }}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -182,6 +201,8 @@ const messages = reactive([
     timestamp: Date.now(),
   }
 ]);
+
+const toolHistory = reactive([]);
 
 const agents = ref([])
 
@@ -271,6 +292,11 @@ onMounted(() => {
     try {
       const data = JSON.parse(event.data);
       console.log("tool used: ", data);
+      const isEmpty = !data ||
+        (Array.isArray(data) && data.length === 0) ||
+        (typeof data === 'object' && Object.keys(data).length === 0);
+      if (!isEmpty)
+        toolHistory.push(data);
     } catch (e) {
       console.error('Failed to parse tool-use message:', e);
     }
@@ -280,6 +306,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (agentsSocket) agentsSocket.close();
   if (historySocket) historySocket.close();
+  if (toolUseSocket) toolUseSocket.close();
 })
 
 const addMessage = async (role, content) => {
@@ -429,6 +456,8 @@ const deleteAllAgents = async () => {
   --user-color: #395864;
   --error-color: #ce3d3d;
   --agent-color: #444;
+  --tool-ok-color: #238b7a;
+  --tool-error-color: #ce3d3d;
 }
 
 .column {
@@ -579,6 +608,16 @@ const deleteAllAgents = async () => {
   background-color: var(--agent-color);
 }
 
+.message-header.tool-ok {
+  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 80%);
+  border: 1px solid var(--tool-ok-color);
+}
+
+.message-header.tool-error {
+  background-color: color-mix(in srgb, var(--tool-error-color), transparent 80%);
+  border: 1px solid var(--tool-error-color);
+}
+
 .message-body {
   background: var(--light-color);
   padding: 10px;
@@ -610,6 +649,20 @@ const deleteAllAgents = async () => {
   border-color: var(--agent-color);
 }
 
+.message-body.tool-ok {
+  border-color: var(--tool-ok-color);
+  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 90%);
+  color: var(--tool-ok-color);
+  margin-top: -1px;
+}
+
+.message-body.tool-error {
+  border-color: var(--tool-error-color);
+  background-color: color-mix(in srgb, var(--tool-error-color), transparent 90%);
+  color: var(--tool-error-color);
+  margin-top: -1px;
+}
+
 .role-label {
   padding-left: 10px;
   text-transform: capitalize;
@@ -624,7 +677,7 @@ const deleteAllAgents = async () => {
   opacity: 0.8;
 }
 
-.icon {
+.button-icon {
   width: 16px;
   height: 16px;
   filter: invert(100%);
@@ -634,7 +687,15 @@ const deleteAllAgents = async () => {
   cursor: pointer;
 }
 
-.icon:hover {
+.button-icon:hover {
   opacity: 1;
+}
+
+.icon {
+  width: 13px;
+  height: 13px;
+  filter: invert(100%);
+  margin-left: 5px;
+  margin-top: 2px;
 }
 </style>
