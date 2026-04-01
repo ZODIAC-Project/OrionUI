@@ -6,7 +6,7 @@
         <input type="button" class="minibutton" value="clear messages" @click="clearChat" />
         <div style="flex-grow: 1"></div>
         <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px">
-          MCP Status:
+          MCP status:
           <span :style="{ color: MCPstatus === null ? 'var(--light-txt-color)' : MCPstatus ? '#3dce3d' : '#ce3d3d' }">
             {{ MCPstatus === null ? 'checking...' : MCPstatus ? 'online' : 'offline' }}
           </span>
@@ -33,7 +33,8 @@
       </div>
       <div class="optionbox">
         <div style="display: flex; gap: 10px">
-          <input type="text" class="textbox" placeholder="direct message..." v-model="msgText" />
+          <input type="text" class="textbox" placeholder="direct message..." v-model="msgText"
+            v-on:keyup.enter="sendMessage" />
           <input type="button" class="button" :value="isSending ? '...' : 'Send'" @click="sendMessage"
             :disabled="isSending" />
         </div>
@@ -43,7 +44,113 @@
       </div>
     </div>
     <div class="column">
+      <div class="minioptionbox"
+        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
+        <input type="button" class="minibutton" value="delete all agents" @click="deleteAllAgents" />
+        <div style="flex-grow: 1"></div>
+        <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px">
+          agent manager status:
+          <span
+            :style="{ color: agentManagerStatus === null ? 'var(--light-txt-color)' : agentManagerStatus ? '#3dce3d' : '#ce3d3d' }">
+            {{ agentManagerStatus === null ? 'checking...' : agentManagerStatus ? 'online' : 'offline' }}
+          </span>
+        </div>
+      </div>
+      <div class="msgbox">
+        <div v-if="historyView === null" v-for="(agent, index) in agents" :key="index" class="message-wrapper">
+          <div class="message-header agent" style="gap:0px">
+            <div class="role-label">Agent {{ index }}</div>
+            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
+              {{ agent.id }}</div>
+            <div class="spacer"></div>
+            <div style="margin-right:10px">
+              <span v-if="!agent.runOnce">every</span> {{ agent.intervalMs / 1000 }} sec
+            </div>
+            <div style="margin-right:10px; opacity:0.5" v-if="agent.runOnce">(run-once)</div>
+          </div>
 
+          <div class="message-body agent">
+            {{ agent.text }}
+          </div>
+
+          <div class="message-header agent"
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none">
+            <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
+            <div v-for="(purpose, index) in agent.purposes" :key="index" class="purposeLabel">
+              <span style="opacity:0.5">{{ purpose }}</span>
+            </div>
+            <div class="spacer"></div>
+            <img src="../assets/icons/eye.png" class="icon" @click="historyView = agent" />
+            <img src="../assets/icons/trash.png" class="icon" @click="deleteAgent(agent.id)" />
+          </div>
+        </div>
+        <div v-else class="message-wrapper" style="height: 100%; margin:0px">
+          <div class="message-header agent" style="gap:0px">
+            <div class="role-label">Agent {{agents.findIndex(a => a.id === historyView.id)}}</div>
+            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
+              {{ historyView.id }}</div>
+            <div class="spacer"></div>
+            <div style="margin-right:10px">
+              <span v-if="!historyView.runOnce">every</span> {{ historyView.intervalMs / 1000 }} sec
+            </div>
+            <div style="margin-right:10px; opacity:0.5" v-if="historyView.runOnce">(run-once)</div>
+          </div>
+
+          <div class="message-body agent">
+            {{ historyView.text }}
+          </div>
+
+          <div class="message-header agent"
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none">
+            <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
+            <div v-for="(purpose, index) in historyView.purposes" :key="index" class="purposeLabel">
+              <span style="opacity:0.5">{{ purpose }}</span>
+            </div>
+            <div class="spacer"></div>
+            <img src="../assets/icons/hide.png" class="icon" @click="historyView = null" />
+            <img src="../assets/icons/trash.png" class="icon"
+              @click="deleteAgent(historyView.id); historyView = null;" />
+          </div>
+          <div class="msgbox"
+            style="border: 1px solid var(--border-color); border-top:none; background-color: var(--light-color);">
+            <div v-for="(message, index) in historyMessages" :key="index" class="message-wrapper">
+              <div class="message-header" :class="message.type">
+                <div class="role-label">{{ message.type }}</div>
+                <div class="spacer"></div>
+                <div class="timestamp">
+                  {{ new Date(message.timestamp * 1000).toLocaleTimeString() }}
+                </div>
+              </div>
+
+              <div class="message-body" :class="message.type">
+                {{ message.message }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="optionbox" style=" min-height: 150px;">
+        <div style="display: flex; gap: 10px">
+          <input type="text" class="textbox" placeholder="agent text" v-model="agentText" />
+          <input type="text" class="textbox" placeholder="interval (sec)" v-model="interval"
+            style="max-width: 150px;" />
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 10px">
+          <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="agentPurpose" />
+          <input type="text" class="textbox" placeholder="memory window" v-model="memoryWindow"
+            style="max-width: 150px;" />
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 8px">
+          <div class="textbox" style="max-width:20px; max-height:20px; margin-top:8px; padding:2px; cursor: pointer"
+            @click="runOnce = !runOnce">
+            <div v-if="runOnce" style="background-color: var(--border-color); width:14px; height:14px;" />
+          </div>
+          <p style="width:120px; margin:0px; margin-top:5px; cursor: pointer; user-select: none;"
+            @click="runOnce = !runOnce">run once</p>
+          <input type="button" class="button" style="width:100%" value="Launch Agent" @click="launchAgent"
+            :disabled="isLaunching" />
+        </div>
+      </div>
     </div>
     <div class="column">
 
@@ -53,12 +160,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
 const MCP_URL = "http://130.149.158.32:30084";
-const MCP_CHAT_URL = `${MCP_URL}/chat`;
-const MCP_HEALTH_URL = `${MCP_URL}/health`;
 
+//const AGENT_URL = "http://130.149.158.132:30085";
+const AGENT_URL = "http://127.0.0.1:8000";
+
+const runOnce = ref(false);
+const historyView = ref(null);
+const historyMessages = ref([]);
+const agentText = ref('');
+const interval = ref('');
+const agentPurpose = ref('');
+const memoryWindow = ref('');
 const msgText = ref('');
 const messages = reactive([
   {
@@ -67,6 +182,8 @@ const messages = reactive([
     timestamp: Date.now(),
   }
 ]);
+
+const agents = ref([])
 
 const generateSessionId = () => {
   // Prefer the browser native UUID if available
@@ -82,19 +199,77 @@ const generateSessionId = () => {
 const sessionId = ref(generateSessionId());
 const accessPurposes = ref('');
 const isSending = ref(false);
+const isLaunching = ref(false);
 const MCPstatus = ref(null);
+const agentManagerStatus = ref(null);
 
 const checkStatus = async () => {
   try {
-    const res = await fetch(MCP_HEALTH_URL);
+    const res = await fetch(`${MCP_URL}/health`);
     MCPstatus.value = res.ok;
   } catch (err) {
     MCPstatus.value = false;
   }
+  try {
+    const res = await fetch(`${AGENT_URL}/health`);
+    agentManagerStatus.value = res.ok;
+  } catch (err) {
+    agentManagerStatus.value = false;
+  }
 }
+
+let agentsSocket;
+let historySocket;
+
+const connectHistorySocket = (id) => {
+  if (historySocket) {
+    historySocket.close();
+    historySocket = null;
+  }
+
+  if (!id) return;
+
+  const wsUrl = `${AGENT_URL.replace(/^http/, 'ws')}/agents/${id}/history`;
+  historySocket = new WebSocket(wsUrl);
+
+  historySocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      historyMessages.value = data;
+      console.log('Received History WebSocket message:', data);
+    } catch (e) {
+      console.error('Failed to parse history message:', e);
+    }
+  };
+
+  historySocket.onerror = (err) => console.error('History Socket Error:', err);
+};
+
+watch(historyView, (newView) => {
+  historyMessages.value = [];
+  if (newView)
+    connectHistorySocket(newView.id);
+  else
+    if (historySocket) historySocket.close();
+}, { immediate: true });
 
 onMounted(() => {
   checkStatus()
+  agentsSocket = new WebSocket(`${AGENT_URL.replace(/^http/, 'ws')}/agents`);
+  agentsSocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      agents.value = data;
+      console.log('Received WebSocket message:', data);
+    } catch (e) {
+      console.error('Failed to parse WebSocket message:', e);
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (agentsSocket) agentsSocket.close();
+  if (historySocket) historySocket.close();
 })
 
 const addMessage = async (role, content) => {
@@ -117,7 +292,7 @@ const sendMessage = async () => {
   let response;
 
   try {
-    response = await fetch(MCP_CHAT_URL, {
+    response = await fetch(`${MCP_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -156,6 +331,45 @@ const sendMessage = async () => {
   }
 }
 
+const launchAgent = async () => {
+  isLaunching.value = true;
+  let text = agentText.value.trim();
+  let intervalMs = parseFloat(interval.value) * 1000;
+  let once = runOnce.value;
+  let memWindow = memoryWindow.value;
+  let purposes = agentPurpose.value
+    ? agentPurpose.value
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => p)
+    : [];
+
+  agentText.value = "";
+  interval.value = "";
+  memoryWindow.value = "";
+  agentPurpose.value = "";
+
+  try {
+    response = await fetch(`${AGENT_URL}/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        intervalMs: intervalMs,
+        runOnce: once,
+        text: text,
+        memoryWindow: memWindow,
+        purposes: purposes
+      })
+    })
+  } catch (e) {
+    console.error(`error while launching agent: ${e}`)
+  }
+
+  isLaunching.value = false;
+}
+
 const clearChat = () => {
   messages.splice(0, messages.length, {
     role: 'assistant',
@@ -164,6 +378,26 @@ const clearChat = () => {
   })
   // start a new session for the new chat
   sessionId.value = generateSessionId()
+}
+
+const deleteAgent = async (agentId) => {
+  const res = await fetch(`${AGENT_URL}/agents/${agentId}`, { method: 'DELETE' });
+  agents.value = agents.value.filter(agent => agent.id !== agentId);
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`error deleting agent: HTTP ${res.status}: ${body}`);
+  }
+}
+
+const deleteAllAgents = async () => {
+  const res = await fetch(`${AGENT_URL}/agents`, { method: 'DELETE' });
+  agents.value = [];
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`error deleting agent: HTTP ${res.status}: ${body}`);
+  }
 }
 
 </script>
@@ -178,13 +412,17 @@ const clearChat = () => {
   max-width: 1400px;
   margin: 0 auto;
   font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-wrap: break-word;
+
 
   --assistant-color: #238b7a;
   --user-color: #395864;
   --error-color: #ce3d3d;
+  --agent-color: #444;
 }
 
 .column {
+  max-width: 460px;
   border: 1px solid var(--border-color);
   flex: 1;
   display: flex;
@@ -264,6 +502,13 @@ const clearChat = () => {
   border-color: white;
 }
 
+.button:disabled {
+  border-color: var(--border-color);
+  color: #888888;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .minibutton {
   cursor: pointer;
   border: none;
@@ -275,6 +520,13 @@ const clearChat = () => {
   color: #e7e7e7;
 }
 
+.purposeLabel {
+  background-color: var(--bg-color);
+  padding-left: 5px;
+  padding-right: 5px;
+  margin-left: 2px;
+}
+
 .message-wrapper {
   font-size: 12px;
   margin-bottom: 10px;
@@ -284,6 +536,7 @@ const clearChat = () => {
 }
 
 .message-header {
+  white-space: nowrap;
   display: flex;
   gap: 10px;
   font-size: 12px;
@@ -302,6 +555,18 @@ const clearChat = () => {
 
 .message-header.error {
   display: none;
+}
+
+.message-header.agent {
+  background-color: var(--agent-color);
+}
+
+.message-header.incoming {
+  background-color: var(--assistant-color);
+}
+
+.message-header.outgoing {
+  background-color: var(--agent-color);
 }
 
 .message-body {
@@ -323,6 +588,18 @@ const clearChat = () => {
   border-color: var(--error-color);
 }
 
+.message-body.agent {
+  border-color: var(--agent-color);
+}
+
+.message-body.incoming {
+  border-color: var(--assistant-color);
+}
+
+.message-body.outgoing {
+  border-color: var(--agent-color);
+}
+
 .role-label {
   padding-left: 10px;
   text-transform: capitalize;
@@ -335,5 +612,19 @@ const clearChat = () => {
 .timestamp {
   padding-right: 10px;
   opacity: 0.8;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  filter: invert(100%);
+  margin-right: 5px;
+  margin-top: 1px;
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.icon:hover {
+  opacity: 1;
 }
 </style>
