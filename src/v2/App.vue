@@ -163,8 +163,8 @@
 import { ref, reactive, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
 const MCP_URL = "http://130.149.158.32:30084";
-
 const AGENT_URL = "http://130.149.158.133:30086";
+const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
 //const AGENT_URL = "http://127.0.0.1:8000";
 
 const runOnce = ref(false);
@@ -220,6 +220,7 @@ const checkStatus = async () => {
 
 let agentsSocket;
 let historySocket;
+let toolUseSocket;
 
 const connectHistorySocket = (id) => {
   if (historySocket) {
@@ -260,9 +261,18 @@ onMounted(() => {
     try {
       const data = JSON.parse(event.data);
       agents.value = data;
-      console.log('Received WebSocket message:', data);
     } catch (e) {
       console.error('Failed to parse WebSocket message:', e);
+    }
+  }
+
+  toolUseSocket = new WebSocket(TOOL_USE_URL);
+  toolUseSocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("tool used: ", data);
+    } catch (e) {
+      console.error('Failed to parse tool-use message:', e);
     }
   }
 })
