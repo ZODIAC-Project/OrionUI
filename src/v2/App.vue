@@ -107,8 +107,8 @@
               <span style="opacity:0.5">{{ purpose }}</span>
             </div>
             <div class="spacer"></div>
-            <img src="../assets/icons/hide.png" class="icon" @click="historyView = null" />
-            <img src="../assets/icons/trash.png" class="icon"
+            <img src="../assets/icons/hide.png" class="button-icon" @click="historyView = null" />
+            <img src="../assets/icons/trash.png" class="button-icon"
               @click="deleteAgent(historyView.id); historyView = null;" />
           </div>
           <div class="msgbox"
