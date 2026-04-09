@@ -296,7 +296,7 @@ onMounted(() => {
         (Array.isArray(data) && data.length === 0) ||
         (typeof data === 'object' && Object.keys(data).length === 0);
       if (!isEmpty)
-        toolHistory.push(data[0]);
+        toolHistory.push(...data);
     } catch (e) {
       console.error('Failed to parse tool-use message:', e);
     }
