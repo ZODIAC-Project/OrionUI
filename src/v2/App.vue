@@ -387,7 +387,7 @@ const launchAgent = async () => {
   agentPurpose.value = "";
 
   try {
-    response = await fetch(`${AGENT_URL}/agents`, {
+    let response = await fetch(`${AGENT_URL}/agents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
