@@ -87,6 +87,7 @@
             </div>
             <div class="spacer"></div>
             <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
+            <img :src="'/src/assets/icons/'+ (agent.pause ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 3px" @click="toggleAgentPause(agent.id)" />
             <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
           </div>
         </div>
@@ -568,6 +569,26 @@ const clearChat = () => {
     timestamp: Date.now(),
   })
   sessionId.value = generateSessionId()
+}
+
+const toggleAgentPause = async (agentId) => {
+  const agent = agents.value.find(a => a.id === agentId);
+  if (!agent) return;
+
+  const newPauseState = !agent.pause;
+
+  const res = await fetch(`${AGENT_URL}/agents/${agentId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pause: newPauseState })
+  });
+
+  if (res.ok) {
+    agent.pause = newPauseState;
+  } else {
+    const body = await res.text();
+    console.error(`error toggling agent pause: HTTP ${res.status}: ${body}`);
+  }
 }
 
 const deleteAgent = async (agentId) => {
