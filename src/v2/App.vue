@@ -1,5 +1,6 @@
 <template>
   <div class="app">
+    <!-- Column 1: Chat -->
     <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
@@ -27,26 +28,29 @@
           </div>
         </div>
       </div>
-      <div class="minioptionbox" style="min-height:20px; display: flex;">
-        <p style="margin:1px; margin-left:10px; margin-right:0px; width: 105px;">session id:</p>
-        <input type="text" class="minitextbox" placeholder="session id..." v-model="sessionId" />
-      </div>
       <div class="optionbox">
-        <div style="display: flex; gap: 10px">
+        <div class="footer-row">
           <input type="text" class="textbox" placeholder="direct message..." v-model="msgText"
             v-on:keyup.enter="sendMessage" />
-          <input type="button" class="button" :value="isSending ? '...' : 'Send'" @click="sendMessage"
+          <input type="button" class="button primary" :value="isSending ? '...' : 'SEND'" @click="sendMessage"
             :disabled="isSending" />
         </div>
-        <div style="margin-top: 10px; display: flex; gap: 10px">
+        <div class="footer-row">
           <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="accessPurposes" />
+        </div>
+        <div class="footer-row">
+           <span class="micro-label">SESSION ID:</span>
+           <input type="text" class="minitextbox" :value="sessionId" readonly @click="copySessionId" />
+           <span v-if="copiedSession" class="copy-note">copied!</span>
         </div>
       </div>
     </div>
+
+    <!-- Column 2: Agents -->
     <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
-        <input type="button" class="minibutton" value="delete all agents" @click="deleteAllAgents" />
+        <input type="button" class="minibutton" value="delete agents" @click="deleteAllAgents" />
         <div style="flex-grow: 1"></div>
         <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px">
           agent manager status:
@@ -61,7 +65,9 @@
           <div class="message-header agent" style="gap:0px">
             <div class="role-label">Agent {{ index }}</div>
             <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
-              {{ agent.id }}</div>
+              <span class="clickable-id" @click="copyAgentId(agent.id)">{{ agent.id }}</span>
+              <span v-if="copiedAgents[agent.id]" style="margin-left:6px; font-size:11px; color: var(--assistant-color);">copied!</span>
+            </div>
             <div class="spacer"></div>
             <div style="margin-right:10px">
               <span v-if="!agent.runOnce">every</span> {{ agent.intervalMs / 1000 }} sec
@@ -88,7 +94,9 @@
           <div class="message-header agent" style="gap:0px">
             <div class="role-label">Agent {{agents.findIndex(a => a.id === historyView.id)}}</div>
             <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
-              {{ historyView.id }}</div>
+              <span class="clickable-id" @click="copyAgentId(historyView.id)">{{ historyView.id }}</span>
+              <span v-if="copiedAgents[historyView.id]" style="margin-left:6px; font-size:11px; color: var(--assistant-color);">copied!</span>
+            </div>
             <div class="spacer"></div>
             <div style="margin-right:10px">
               <span v-if="!historyView.runOnce">every</span> {{ historyView.intervalMs / 1000 }} sec
@@ -129,29 +137,75 @@
           </div>
         </div>
       </div>
-      <div class="optionbox" style=" min-height: 150px;">
-        <div style="display: flex; gap: 10px">
+      <div class="optionbox">
+        <div class="footer-row">
           <input type="text" class="textbox" placeholder="agent text" v-model="agentText" />
-          <input type="text" class="textbox" placeholder="interval (sec)" v-model="interval"
-            style="max-width: 150px;" />
+          <input type="text" class="textbox" placeholder="sec" v-model="interval"
+            style="max-width: 60px;" />
         </div>
-        <div style="margin-top: 10px; display: flex; gap: 10px">
+        <div class="footer-row">
           <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="agentPurpose" />
-          <input type="text" class="textbox" placeholder="memory window" v-model="memoryWindow"
-            style="max-width: 150px;" />
+          <input type="text" class="textbox" placeholder="mem" v-model="memoryWindow"
+            style="max-width: 60px;" />
         </div>
-        <div style="margin-top: 10px; display: flex; gap: 8px">
-          <div class="textbox" style="max-width:20px; max-height:20px; margin-top:8px; padding:2px; cursor: pointer"
-            @click="runOnce = !runOnce">
-            <div v-if="runOnce" style="background-color: var(--border-color); width:14px; height:14px;" />
+        <div class="footer-row">
+          <div class="custom-checkbox" @click="runOnce = !runOnce">
+            <div class="checkbox-box" :class="{ 'checked': runOnce }"></div>
+            <span class="micro-label">RUN ONCE</span>
           </div>
-          <p style="width:120px; margin:0px; margin-top:5px; cursor: pointer; user-select: none;"
-            @click="runOnce = !runOnce">run once</p>
-          <input type="button" class="button" style="width:100%" value="Launch Agent" @click="launchAgent"
+          <input type="button" class="button primary fill" value="LAUNCH AGENT" @click="launchAgent"
             :disabled="isLaunching" />
         </div>
       </div>
     </div>
+
+    <!-- Column 3: WebSocket Monitor -->
+    <div class="column">
+      <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--border-color);">
+        <span style="font-size: 12px; color: var(--light-txt-color); margin-left: 10px;">ws subscription monitor</span>
+        <div style="flex-grow: 1"></div>
+        <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px;">
+          {{ wsSubscriptions.length }}/8 active
+        </div>
+      </div>
+
+      <div v-if="wsSubscriptions.length > 0"
+        style="display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0 6px; border-bottom: 1px solid var(--border-color); background: var(--light-color);">
+        <div v-for="(sub, index) in wsSubscriptions" :key="sub.id" @click="activeWsTab = index" class="ws-tab"
+          :class="{ 'ws-tab-active': activeWsTab === index }">
+          <span class="ws-status-dot"
+            :style="{ background: sub.status === 'connected' ? '#3dce3d' : '#ce3d3d' }">
+          </span>
+          <span class="ws-tab-label">{{ sub.label }}</span>
+          <span class="ws-tab-close" @click.stop="removeWsSubscription(sub.id)">×</span>
+        </div>
+      </div>
+
+      <div class="msgbox" ref="wsMessageBox">
+        <div v-if="wsSubscriptions.length === 0"
+          style="color: var(--light-txt-color); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
+          no active subscriptions<br />enter address below
+        </div>
+        <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
+          <div class="message-header incoming">
+            <div class="role-label">incoming</div>
+            <div class="spacer"></div>
+            <div class="timestamp">{{ new Date(msg.timestamp).toLocaleTimeString() }}</div>
+          </div>
+          <div class="message-body incoming">{{ msg.data }}</div>
+        </div>
+      </div>
+      <div class="optionbox ws-footer">
+        <div class="footer-row">
+          <input type="text" class="textbox" placeholder="ws://host:port/path" v-model="newWsUrl"
+            v-on:keyup.enter="addWsSubscription" />
+          <input type="button" class="button primary" value="CONNECT" @click="addWsSubscription"
+            :disabled="!newWsUrl.trim() || wsSubscriptions.length >= 8" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 4: Tool History -->
     <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
@@ -179,12 +233,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
 const MCP_URL = "http://130.149.158.32:30084";
 const AGENT_URL = "http://130.149.158.133:30086";
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
-//const AGENT_URL = "http://127.0.0.1:8000";
 
 const runOnce = ref(false);
 const historyView = ref(null);
@@ -203,26 +256,119 @@ const messages = reactive([
 ]);
 
 const toolHistory = reactive([]);
-
 const agents = ref([])
 
 const generateSessionId = () => {
-  // Prefer the browser native UUID if available
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID()
     }
   } catch (e) { }
-  // Fallback: timestamp + random
   return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 const sessionId = ref(generateSessionId());
+const copiedSession = ref(false);
+
+const copySessionId = async () => {
+  try {
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(String(sessionId.value));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = String(sessionId.value);
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    copiedSession.value = true;
+    setTimeout(() => (copiedSession.value = false), 1500);
+  } catch (e) {
+    console.error('copy failed', e);
+  }
+}
+const copiedAgents = reactive({});
+
+const copyAgentId = async (id) => {
+  if (!id) return;
+  try {
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(String(id));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = String(id);
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    copiedAgents[id] = true;
+    setTimeout(() => (copiedAgents[id] = false), 1500);
+  } catch (e) {
+    console.error('copyAgentId failed', e);
+  }
+}
 const accessPurposes = ref('');
 const isSending = ref(false);
 const isLaunching = ref(false);
 const MCPstatus = ref(null);
 const agentManagerStatus = ref(null);
+
+// WebSocket monitor state
+const newWsUrl = ref('');
+const wsSubscriptions = ref([]);
+const activeWsTab = ref(0);
+const wsSocketMap = {};
+const wsMessageBox = ref(null);
+
+const activeTabMessages = computed(() => {
+  const sub = wsSubscriptions.value[activeWsTab.value];
+  return sub ? sub.messages : [];
+});
+
+const addWsSubscription = () => {
+  const url = newWsUrl.value.trim();
+  if (!url || wsSubscriptions.value.length >= 8) return;
+
+  const id = `ws-${Date.now()}`;
+  const label = url.replace(/^wss?:\/\//, '').slice(0, 22);
+  const sub = reactive({ id, url, label, status: 'connecting', messages: [] });
+
+  wsSubscriptions.value.unshift(sub);
+  activeWsTab.value = 0;
+  newWsUrl.value = '';
+
+  const socket = new WebSocket(url);
+  wsSocketMap[id] = socket;
+
+  socket.onopen = () => { sub.status = 'connected'; };
+  socket.onerror = () => { sub.status = 'error'; };
+  socket.onclose = () => { if (sub.status !== 'removed') sub.status = 'closed'; };
+  socket.onmessage = (event) => {
+    sub.messages.unshift({ data: event.data, timestamp: Date.now() });
+    if (sub.messages.length > 200) sub.messages.pop();
+  };
+};
+
+const removeWsSubscription = (id) => {
+  const socket = wsSocketMap[id];
+  if (socket) { socket.close(); delete wsSocketMap[id]; }
+  const idx = wsSubscriptions.value.findIndex(s => s.id === id);
+  if (idx !== -1) {
+    wsSubscriptions.value[idx].status = 'removed';
+    wsSubscriptions.value.splice(idx, 1);
+  }
+  if (activeWsTab.value >= wsSubscriptions.value.length) {
+    activeWsTab.value = Math.max(0, wsSubscriptions.value.length - 1);
+  }
+};
 
 const checkStatus = async () => {
   try {
@@ -307,6 +453,7 @@ onUnmounted(() => {
   if (agentsSocket) agentsSocket.close();
   if (historySocket) historySocket.close();
   if (toolUseSocket) toolUseSocket.close();
+  Object.values(wsSocketMap).forEach(s => s.close());
 })
 
 const addMessage = async (role, content) => {
@@ -317,7 +464,7 @@ const addMessage = async (role, content) => {
   });
   await nextTick();
   const msgbox = document.querySelector('.msgbox');
-  msgbox.scrollTop = msgbox.scrollHeight;
+  if (msgbox) msgbox.scrollTop = msgbox.scrollHeight;
 }
 
 const sendMessage = async () => {
@@ -413,7 +560,6 @@ const clearChat = () => {
     content: 'Chat zurückgesetzt. Wie kann ich helfen?',
     timestamp: Date.now(),
   })
-  // start a new session for the new chat
   sessionId.value = generateSessionId()
 }
 
@@ -436,7 +582,6 @@ const deleteAllAgents = async () => {
     console.error(`error deleting agent: HTTP ${res.status}: ${body}`);
   }
 }
-
 </script>
 
 <style scoped>
@@ -446,11 +591,10 @@ const deleteAllAgents = async () => {
   height: 100vh;
   gap: 10px;
   padding: 30px;
-  max-width: 1400px;
+  max-width: 1900px;
   margin: 0 auto;
   font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-wrap: break-word;
-
 
   --assistant-color: #238b7a;
   --user-color: #395864;
@@ -461,14 +605,12 @@ const deleteAllAgents = async () => {
 }
 
 .column {
-  max-width: 460px;
   border: 1px solid var(--border-color);
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.7);
+  min-width: 0;
 }
 
 .msgbox {
@@ -477,75 +619,113 @@ const deleteAllAgents = async () => {
   padding: 10px;
   overflow-y: scroll;
   -ms-overflow-style: none;
-  /* IE and Edge */
   scrollbar-width: none;
 }
 
 .optionbox {
-  padding: 10px;
-  height: 104px;
-  min-height: 100px;
+  padding: 15px;
+  height: 150px;
+  min-height: 150px;
   width: 100%;
   border-top: 1px solid var(--border-color);
   background: var(--light-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
 }
 
-.minioptionbox {
-  height: 50px;
-  min-height: 20px;
-  max-height: 20px;
-  width: 100%;
-  border-top: 1px solid var(--border-color);
-  font-size: 12px;
-  color: var(--light-txt-color);
+.footer-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 36px;
 }
 
 .textbox {
   border: 1px solid var(--border-color);
   background: var(--bg-color);
-  padding: 5px;
+  padding: 6px 8px;
   width: 100%;
   box-sizing: border-box;
   color: #e7e7e7;
   outline: none;
+  height: 100%;
+}
+
+/* WebSocket column footer overrides — set `--ws-footer-height` to change */
+.ws-footer {
+  height: var(--ws-footer-height, 80px);
+  min-height: var(--ws-footer-height, 70px);
+  max-height: var(--ws-footer-height, 200px);
+}
+.textbox:focus { border-color: #888; }
+
+.button {
+  font-family: inherit;
+  height: 100%;
+  border: 1px solid var(--border-color);
+  padding: 0 15px;
+  color: #e7e7e7;
+  background: var(--light-color);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.footer-row .button { height: 100%; }
+.button.primary { border-color: var(--assistant-color); color: var(--assistant-color); }
+.button:hover { background: var(--bg-color); }
+.button:disabled { opacity: 0.3; cursor: not-allowed; }
+.button.fill { flex-grow: 1; }
+
+.micro-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--light-txt-color);
+  white-space: nowrap;
 }
 
 .minitextbox {
+  font-family: inherit;
   border: transparent;
   background: transparent;
-  /* padding: 5px; */
   width: 100%;
   box-sizing: border-box;
   outline: none;
   color: var(--light-txt-color);
-}
-
-.textbox:focus {
-  border-color: white;
-}
-
-.button {
-  border: 1px solid var(--border-color);
-  padding: 5px 15px;
-  color: #e7e7e7;
-  background: var(--light-color);
   cursor: pointer;
 }
 
-.button:hover {
-  background: var(--bg-color);
+.copy-note { font-size: 11px; color: var(--assistant-color); margin-left: 5px; }
+.helper-text { font-size: 11px; color: var(--light-txt-color); opacity: 0.6; line-height: 1.4; }
+
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.checkbox-box {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-color);
+  background: #0d0f14;
+}
+.checkbox-box.checked {
+  background: var(--assistant-color);
 }
 
-.button:active {
-  background: var(--light-color);
-  border-color: white;
-}
+/* END FOOTER SECTION */
 
-.button:disabled {
-  border-color: var(--border-color);
-  color: #888888;
-  cursor: not-allowed;
-  pointer-events: none;
+.minioptionbox {
+  height: auto;
+  min-height: 20px;
+  width: 100%;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--light-txt-color);
+  display: flex;
+  align-items: center;
 }
 
 .minibutton {
@@ -554,148 +734,29 @@ const deleteAllAgents = async () => {
   background-color: transparent;
   color: var(--light-txt-color);
 }
+.minibutton:hover { color: #e7e7e7; }
 
-.minibutton:hover {
-  color: #e7e7e7;
-}
+.message-wrapper { font-size: 12px; margin-bottom: 10px; width: 100%; display: flex; flex-direction: column; }
+.message-header { display: flex; gap: 10px; font-weight: 600; color: white; padding: 2px 0; }
+.message-header.assistant { background-color: var(--assistant-color); }
+.message-header.user { background-color: var(--user-color); }
+.message-header.agent { background-color: var(--agent-color); }
+.message-header.incoming { background-color: var(--assistant-color); }
 
-.purposeLabel {
-  background-color: var(--bg-color);
-  padding-left: 5px;
-  padding-right: 5px;
-  margin-left: 2px;
-}
+.message-body { background: var(--light-color); padding: 10px; border: 1px solid transparent; }
+.message-body.assistant { border-color: var(--assistant-color); }
+.message-body.user { border-color: var(--user-color); }
+.message-body.agent { border-color: var(--agent-color); }
+.message-body.incoming { border-color: var(--assistant-color); }
 
-.message-wrapper {
-  font-size: 12px;
-  margin-bottom: 10px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.message-header {
-  white-space: nowrap;
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  padding: 2px 0;
-}
-
-.message-header.assistant {
-  background-color: var(--assistant-color);
-}
-
-.message-header.user {
-  background-color: var(--user-color);
-}
-
-.message-header.error {
-  display: none;
-}
-
-.message-header.agent {
-  background-color: var(--agent-color);
-}
-
-.message-header.incoming {
-  background-color: var(--assistant-color);
-}
-
-.message-header.outgoing {
-  background-color: var(--agent-color);
-}
-
-.message-header.tool-ok {
-  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 80%);
-  border: 1px solid var(--tool-ok-color);
-}
-
-.message-header.tool-error {
-  background-color: color-mix(in srgb, var(--tool-error-color), transparent 80%);
-  border: 1px solid var(--tool-error-color);
-}
-
-.message-body {
-  background: var(--light-color);
-  padding: 10px;
-  border: 1px solid transparent;
-}
-
-.message-body.assistant {
-  border-color: var(--assistant-color);
-}
-
-.message-body.user {
-  border-color: var(--user-color);
-}
-
-.message-body.error {
-  color: var(--error-color);
-  border-color: var(--error-color);
-}
-
-.message-body.agent {
-  border-color: var(--agent-color);
-}
-
-.message-body.incoming {
-  border-color: var(--assistant-color);
-}
-
-.message-body.outgoing {
-  border-color: var(--agent-color);
-}
-
-.message-body.tool-ok {
-  border-color: var(--tool-ok-color);
-  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 90%);
-  color: var(--tool-ok-color);
-  margin-top: -1px;
-}
-
-.message-body.tool-error {
-  border-color: var(--tool-error-color);
-  background-color: color-mix(in srgb, var(--tool-error-color), transparent 90%);
-  color: var(--tool-error-color);
-  margin-top: -1px;
-}
-
-.role-label {
-  padding-left: 10px;
-  text-transform: capitalize;
-}
-
-.spacer {
-  flex-grow: 1;
-}
-
-.timestamp {
-  padding-right: 10px;
-  opacity: 0.8;
-}
-
-.button-icon {
-  width: 16px;
-  height: 16px;
-  filter: invert(100%);
-  margin-right: 5px;
-  margin-top: 1px;
-  opacity: 0.5;
-  cursor: pointer;
-}
-
-.button-icon:hover {
-  opacity: 1;
-}
-
-.icon {
-  width: 13px;
-  height: 13px;
-  filter: invert(100%);
-  margin-left: 5px;
-  margin-top: 2px;
-}
+.role-label { padding-left: 10px; text-transform: capitalize; }
+.spacer { flex-grow: 1; }
+.timestamp { padding-right: 10px; opacity: 0.8; }
+.purposeLabel { background-color: var(--bg-color); padding: 0 5px; margin-left: 2px; font-size: 10px; }
+.clickable-id { cursor: pointer; text-decoration: underline dotted; }
+.button-icon { width: 16px; height: 16px; filter: invert(100%); margin-left: 5px; opacity: 0.5; cursor: pointer; }
+.ws-tab { padding: 3px 8px; border: 1px solid var(--border-color); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.ws-tab-active { background: var(--bg-color); color: #e7e7e7; }
+.ws-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+.icon { width: 13px; height: 13px; filter: invert(100%); margin-right: 5px; }
 </style>

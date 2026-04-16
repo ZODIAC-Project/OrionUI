@@ -67,6 +67,8 @@ spec:
   selector:
     matchLabels:
       app: orion-ui
+  template:
+    metadata:
       labels:
         app: orion-ui
     spec:
@@ -74,15 +76,15 @@ spec:
         - name: regcred
       containers:
         - name: orion-ui
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui@sha256:535de536fa13e81e0b3303e9547b43802b51ed0cef66b68e97b015955d5f920b
+          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/orion-ui@sha256:9daa57a1e1268ac5bfde3701a60206c40ad1fba5c07c9a6a944fa14dd492a21d
           imagePullPolicy: Always
           env:
-          - name: VITE_CHAT_API_BASE
-            value: "/api"
-          - name: VITE_CHAT_API_PATH
-            value: "/chat"
-          - name: VITE_AGENT_API_BASE
-            value: /agent-api
+            - name: VITE_CHAT_API_BASE
+              value: "/api"
+            - name: VITE_CHAT_API_PATH
+              value: "/chat"
+            - name: VITE_AGENT_API_BASE
+              value: "/agent-api"
           ports:
             - containerPort: 80
           volumeMounts:
