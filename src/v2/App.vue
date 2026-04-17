@@ -149,12 +149,12 @@
             style="max-width: 60px;" />
         </div>
         <div class="footer-row">
-          <div class="custom-checkbox" @click="runOnce = !runOnce">
+          <div class="custom-checkbox" @click="runOnce = !runOnce" style="flex-shrink: 0;">
             <div class="checkbox-box" :class="{ 'checked': runOnce }"></div>
             <span class="micro-label">RUN ONCE</span>
           </div>
           <input type="button" class="button primary fill" value="LAUNCH AGENT" @click="launchAgent"
-            :disabled="isLaunching" />
+            :disabled="isLaunching" style="flex-shrink: 0; min-width: 0;" />
         </div>
       </div>
     </div>
@@ -197,7 +197,7 @@
       </div>
       <div class="optionbox ws-footer">
         <div class="footer-row">
-          <input type="text" class="textbox" placeholder="ws://host:port/path" v-model="newWsUrl"
+          <input type="text" class="textbox" placeholder="session ID" v-model="newWsUrl"
             v-on:keyup.enter="addWsSubscription" />
           <input type="button" class="button primary" value="CONNECT" @click="addWsSubscription"
             :disabled="!newWsUrl.trim() || wsSubscriptions.length >= 8" />
@@ -238,6 +238,7 @@ import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from
 const MCP_URL = "http://130.149.158.32:30084";
 const AGENT_URL = "http://130.149.158.133:30086";
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
+const SUBSCRIPTION_BASE_URL = "ws://130.149.158.32:30084/ws/";
 
 const runOnce = ref(false);
 const historyView = ref(null);
@@ -334,11 +335,12 @@ const activeTabMessages = computed(() => {
 });
 
 const addWsSubscription = () => {
-  const url = newWsUrl.value.trim();
-  if (!url || wsSubscriptions.value.length >= 8) return;
+  const sessionInput = newWsUrl.value.trim();
+  if (!sessionInput || wsSubscriptions.value.length >= 8) return;
 
+  const url = `${SUBSCRIPTION_BASE_URL}${sessionInput}`;
   const id = `ws-${Date.now()}`;
-  const label = url.replace(/^wss?:\/\//, '').slice(0, 22);
+  const label = sessionInput.slice(0, 22);
   const sub = reactive({ id, url, label, status: 'connecting', messages: [] });
 
   wsSubscriptions.value.unshift(sub);
@@ -595,6 +597,7 @@ const deleteAllAgents = async () => {
   margin: 0 auto;
   font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-wrap: break-word;
+  overflow-x: auto;
 
   --assistant-color: #238b7a;
   --user-color: #395864;
@@ -606,11 +609,11 @@ const deleteAllAgents = async () => {
 
 .column {
   border: 1px solid var(--border-color);
-  flex: 1;
+  flex: 1 1 220px;
   display: flex;
   flex-direction: column;
   box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.7);
-  min-width: 0;
+  min-width: 220px;
 }
 
 .msgbox {
@@ -675,7 +678,7 @@ const deleteAllAgents = async () => {
 .button.primary { border-color: var(--assistant-color); color: var(--assistant-color); }
 .button:hover { background: var(--bg-color); }
 .button:disabled { opacity: 0.3; cursor: not-allowed; }
-.button.fill { flex-grow: 1; }
+.button.fill { flex: 1 0 auto; }
 
 .micro-label {
   font-size: 11px;
