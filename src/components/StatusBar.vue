@@ -38,7 +38,6 @@
 
 <script setup>
 import { reactive, onMounted, onBeforeUnmount, toRefs, watch } from 'vue'
-import mqtt from 'mqtt'
 
 const props = defineProps({
   targets: {
@@ -73,15 +72,32 @@ const onUrlInput = (idx) => {
 }
 
 const statuses = reactive([])
+// per-target WebSocket sockets and timeouts for broker health checks
+const wsSockets = []
+const wsTimeouts = []
 let timer = null
 
 function ensureStatuses() {
   // keep statuses array same length as props.targets
   while (statuses.length < props.targets.length) {
     statuses.push({ status: 'unknown', code: null, lastChecked: '' })
+    wsSockets.push(null)
+    wsTimeouts.push(null)
   }
   while (statuses.length > props.targets.length) {
+    const idx = statuses.length - 1
+    // cleanup any lingering websocket or timeout for the removed index
+    if (wsSockets[idx]) {
+      try { wsSockets[idx].close() } catch (e) {}
+      wsSockets[idx] = null
+    }
+    if (wsTimeouts[idx]) {
+      clearTimeout(wsTimeouts[idx])
+      wsTimeouts[idx] = null
+    }
     statuses.pop()
+    wsSockets.pop()
+    wsTimeouts.pop()
   }
 }
 
@@ -131,12 +147,12 @@ function statusText(st) {
   return 'unbekannt'
 }
 
-async function checkTarget(url, idx) {
+async function checkTarget(url, idx, targetId) {
   statuses[idx].status = 'checking'
   
-  // 1. Check if it's an MQTT WebSocket URL
+  // 1. Check if it's an MQTT WebSocket URL (use a plain WS handshake)
   if (url.startsWith('ws://') || url.startsWith('wss://')) {
-    checkMqtt(url, idx)
+    checkWs(url, idx, targetId)
     return
   }
 
@@ -155,36 +171,75 @@ async function checkTarget(url, idx) {
   }
 }
 
-function checkMqtt(url, idx) {
-  // Use a unique client ID and a very short timeout
-  const client = mqtt.connect(url, {
-    connectTimeout: props.timeoutMs,
-    reconnectPeriod: 0, // Don't keep trying if it fails
-    clientId: 'health-check-' + Math.random().toString(16).substr(2, 8)
-  })
+function checkWs(url, idx, targetId) {
+  // Clear any previous socket or timeout
+  if (wsSockets[idx]) {
+    try { wsSockets[idx].close() } catch (e) {}
+    wsSockets[idx] = null
+  }
+  if (wsTimeouts[idx]) {
+    clearTimeout(wsTimeouts[idx])
+    wsTimeouts[idx] = null
+  }
 
-  client.on('connect', () => {
-    statuses[idx].status = 'ok'
-    statuses[idx].code = 'Connected'
-    statuses[idx].lastChecked = new Date().toLocaleTimeString()
-    client.end()
-  })
+  let opened = false
+  try {
+    const protocols = targetId === 'broker' || url.includes('mqtt') ? ['mqtt'] : undefined
+    const ws = new WebSocket(url, protocols)
+    wsSockets[idx] = ws
 
-  client.on('error', () => {
+    const cleanup = () => {
+      if (wsSockets[idx] === ws) wsSockets[idx] = null
+      if (wsTimeouts[idx]) { clearTimeout(wsTimeouts[idx]); wsTimeouts[idx] = null }
+      try { ws.onopen = ws.onclose = ws.onerror = null } catch (e) {}
+    }
+
+    ws.onopen = () => {
+      opened = true
+      statuses[idx].status = 'ok'
+      statuses[idx].code = 'Connected'
+      statuses[idx].lastChecked = new Date().toLocaleTimeString()
+      try { ws.close() } catch (e) {}
+      cleanup()
+    }
+
+    ws.onerror = () => {
+      if (opened) return // ignore errors after a successful open
+      statuses[idx].status = 'error'
+      statuses[idx].code = 'Conn Fail'
+      statuses[idx].lastChecked = new Date().toLocaleTimeString()
+      try { ws.close() } catch (e) {}
+      cleanup()
+    }
+
+    // If the socket closes before open, treat as error
+    ws.onclose = (ev) => {
+      if (opened) return
+      statuses[idx].status = 'error'
+      statuses[idx].code = ev && ev.code ? `Closed ${ev.code}` : 'Closed'
+      statuses[idx].lastChecked = new Date().toLocaleTimeString()
+      cleanup()
+    }
+
+    // manual timeout in case events don't fire
+    wsTimeouts[idx] = setTimeout(() => {
+      if (!statuses[idx]) return
+      if (statuses[idx].status === 'checking') {
+        statuses[idx].status = 'error'
+        statuses[idx].code = 'Timeout'
+        statuses[idx].lastChecked = new Date().toLocaleTimeString()
+      }
+      if (wsSockets[idx]) {
+        try { wsSockets[idx].close() } catch (e) {}
+        wsSockets[idx] = null
+      }
+      if (wsTimeouts[idx]) { clearTimeout(wsTimeouts[idx]); wsTimeouts[idx] = null }
+    }, props.timeoutMs)
+  } catch (err) {
     statuses[idx].status = 'error'
     statuses[idx].code = 'Conn Fail'
     statuses[idx].lastChecked = new Date().toLocaleTimeString()
-    client.end()
-  })
-  
-  // Handle timeout manually just in case
-  setTimeout(() => {
-    if (statuses[idx].status === 'checking') {
-      statuses[idx].status = 'error'
-      statuses[idx].code = 'Timeout'
-      client.end()
-    }
-  }, props.timeoutMs + 500)
+  }
 }
 
 function checkAll() {
@@ -196,7 +251,7 @@ function checkAll() {
       statuses[i].lastChecked = ''
       return
     }
-    checkTarget(t.url, i)
+    checkTarget(t.url, i, t.id)
   })
 }
 
@@ -210,7 +265,6 @@ onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
 
-// expose refs if needed (not necessary but keeps pattern consistent)
 toRefs(statuses)
 </script>
 
