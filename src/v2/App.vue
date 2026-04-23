@@ -80,14 +80,14 @@
           </div>
 
           <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none">
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none; padding-right: 2px">
             <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
             <div v-for="(purpose, index) in agent.purposes" :key="index" class="purposeLabel">
               <span style="opacity:0.5">{{ purpose }}</span>
             </div>
             <div class="spacer"></div>
             <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
-            <img :src="'/src/assets/icons/'+ (agent.pause ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 3px" @click="toggleAgentPause(agent.id)" />
+            <img :src="'/src/assets/icons/'+ (agent.paused ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(agent.id)" />
             <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
           </div>
         </div>
@@ -110,13 +110,14 @@
           </div>
 
           <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none">
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none; padding-right: 2px">
             <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
             <div v-for="(purpose, index) in historyView.purposes" :key="index" class="purposeLabel">
               <span style="opacity:0.5">{{ purpose }}</span>
             </div>
             <div class="spacer"></div>
             <img src="../assets/icons/hide.png" class="button-icon" @click="historyView = null" />
+            <img :src="'/src/assets/icons/'+ (historyView.paused ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(historyView.id)" />
             <img src="../assets/icons/trash.png" class="button-icon"
               @click="deleteAgent(historyView.id); historyView = null;" />
           </div>
@@ -215,8 +216,8 @@
       <div class="msgbox">
         <div v-for="(toolUse, index) in toolHistory" :key="index" class="message-wrapper">
           <div class="message-header" :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
-            <img v-if="toolUse.accepted" src="../assets/icons/check.png" class="icon" />
-            <img v-else src="../assets/icons/trash.png" class="icon" />
+            <img v-if="toolUse.accepted" src="../assets/icons/check.png" class="icon" style="margin-left:4px; margin-top:2px"/>
+            <img v-else src="../assets/icons/trash.png" class="icon" style="margin-left:4px; margin-top:2px"/>
             <div class="role-label" style="padding-left:0px">{{ toolUse.tool }}</div>
             <div class="spacer"></div>
           </div>
@@ -436,6 +437,7 @@ onMounted(() => {
     try {
       const data = JSON.parse(event.data);
       agents.value = data;
+      console.log('Received Agents WebSocket message:', data);
     } catch (e) {
       console.error('Failed to parse WebSocket message:', e);
     }
@@ -575,7 +577,11 @@ const toggleAgentPause = async (agentId) => {
   const agent = agents.value.find(a => a.id === agentId);
   if (!agent) return;
 
-  const newPauseState = !agent.pause;
+  const newPauseState = !agent.paused;
+
+  if (historyView.value && historyView.value.id === agentId) {
+    historyView.value.paused = newPauseState;
+  }
 
   const res = await fetch(`${AGENT_URL}/agents/${agentId}`, {
     method: 'POST',
@@ -584,7 +590,7 @@ const toggleAgentPause = async (agentId) => {
   });
 
   if (res.ok) {
-    agent.pause = newPauseState;
+    agent.paused = newPauseState;
   } else {
     const body = await res.text();
     console.error(`error toggling agent pause: HTTP ${res.status}: ${body}`);
@@ -771,12 +777,30 @@ const deleteAllAgents = async () => {
 .message-header.user { background-color: var(--user-color); }
 .message-header.agent { background-color: var(--agent-color); }
 .message-header.incoming { background-color: var(--assistant-color); }
+.message-header.outgoing { background-color: var(--agent-color); }
+.message-header.error { display: none; }
+.message-header.tool-ok { background-color: color-mix(in srgb, var(--tool-ok-color), transparent 80%); border: 1px solid var(--tool-ok-color); }
+.message-header.tool-error { background-color: color-mix(in srgb, var(--tool-error-color), transparent 80%); border: 1px solid var(--tool-error-color); }
 
 .message-body { background: var(--light-color); padding: 10px; border: 1px solid transparent; }
 .message-body.assistant { border-color: var(--assistant-color); }
 .message-body.user { border-color: var(--user-color); }
 .message-body.agent { border-color: var(--agent-color); }
 .message-body.incoming { border-color: var(--assistant-color); }
+.message-body.outgoing { border-color: var(--agent-color); }
+.message-body.error {  color: var(--error-color);border-color: var(--error-color); }
+.message-body.tool-ok {
+  border-color: var(--tool-ok-color);
+  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 90%);
+  color: var(--tool-ok-color);
+  margin-top: -1px;
+}
+.message-body.tool-error {
+  border-color: var(--tool-error-color);
+  background-color: color-mix(in srgb, var(--tool-error-color), transparent 90%);
+  color: var(--tool-error-color);
+  margin-top: -1px;
+}
 
 .role-label { padding-left: 10px; text-transform: capitalize; }
 .spacer { flex-grow: 1; }
