@@ -184,7 +184,7 @@
       <div class="msgbox" ref="wsMessageBox">
         <div v-if="wsSubscriptions.length === 0"
           style="color: var(--light-txt-color); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
-          no active subscriptions<br />enter address below
+          no active subscriptions<br />enter SessionId below
         </div>
         <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
           <div class="message-header incoming">
@@ -238,7 +238,7 @@ import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from
 const MCP_URL = "http://130.149.158.32:30084";
 const AGENT_URL = "http://130.149.158.133:30086";
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
-const SUBSCRIPTION_BASE_URL = "ws://130.149.158.32:30084/ws/";
+const SUBSCRIPTION_BASE_URL = "ws://130.149.158.32:30002/ws/";
 
 const runOnce = ref(false);
 const historyView = ref(null);
