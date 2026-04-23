@@ -354,6 +354,11 @@ const addWsSubscription = () => {
   socket.onerror = () => { sub.status = 'error'; };
   socket.onclose = () => { if (sub.status !== 'removed') sub.status = 'closed'; };
   socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    
+    // Filter out keepalive pings
+    if (data.type === 'ping') return;
+    
     sub.messages.unshift({ data: event.data, timestamp: Date.now() });
     if (sub.messages.length > 200) sub.messages.pop();
   };
