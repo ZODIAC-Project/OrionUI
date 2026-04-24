@@ -737,7 +737,7 @@ onUnmounted(() => {
 }
 .grafana-iframe {
   width: 100%;
-  min-height: 480px;
+  min-height: 720px;
   border: none;
   border-radius: 8px;
   background: #222;
