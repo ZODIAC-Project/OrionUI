@@ -3,12 +3,12 @@
     <!-- Column 1: Chat -->
     <div class="column">
       <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
+        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="clear messages" @click="clearChat" />
         <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px">
+        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
           MCP status:
-          <span :style="{ color: MCPstatus === null ? 'var(--light-txt-color)' : MCPstatus ? '#3dce3d' : '#ce3d3d' }">
+          <span :style="{ color: MCPstatus === null ? 'var(--ui-text-light)' : MCPstatus ? '#3dce3d' : '#ce3d3d' }">
             {{ MCPstatus === null ? 'checking...' : MCPstatus ? 'online' : 'offline' }}
           </span>
         </div>
@@ -49,13 +49,13 @@
     <!-- Column 2: Agents -->
     <div class="column">
       <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
+        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="delete agents" @click="deleteAllAgents" />
         <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px">
+        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
           agent manager status:
           <span
-            :style="{ color: agentManagerStatus === null ? 'var(--light-txt-color)' : agentManagerStatus ? '#3dce3d' : '#ce3d3d' }">
+            :style="{ color: agentManagerStatus === null ? 'var(--ui-text-light)' : agentManagerStatus ? '#3dce3d' : '#ce3d3d' }">
             {{ agentManagerStatus === null ? 'checking...' : agentManagerStatus ? 'online' : 'offline' }}
           </span>
         </div>
@@ -80,7 +80,7 @@
           </div>
 
           <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none; padding-right: 2px">
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
             <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
             <div v-for="(purpose, index) in agent.purposes" :key="index" class="purposeLabel">
               <span style="opacity:0.5">{{ purpose }}</span>
@@ -110,7 +110,7 @@
           </div>
 
           <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--border-color); border-top:none; padding-right: 2px">
+            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
             <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
             <div v-for="(purpose, index) in historyView.purposes" :key="index" class="purposeLabel">
               <span style="opacity:0.5">{{ purpose }}</span>
@@ -122,7 +122,7 @@
               @click="deleteAgent(historyView.id); historyView = null;" />
           </div>
           <div class="msgbox"
-            style="border: 1px solid var(--border-color); border-top:none; background-color: var(--light-color);">
+            style="border: 1px solid var(--ui-light); border-top:none; background-color: var(--light-color);">
             <div v-for="(message, index) in historyMessages" :key="index" class="message-wrapper">
               <div class="message-header" :class="message.type">
                 <div class="role-label">{{ message.type }}</div>
@@ -163,16 +163,16 @@
 
     <!-- Column 3: WebSocket Monitor -->
     <div class="column">
-      <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--border-color);">
-        <span style="font-size: 12px; color: var(--light-txt-color); margin-left: 10px;">ws subscription monitor</span>
+      <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--ui-light);">
+        <span style="font-size: 12px; color: var(--ui-text-light); margin-left: 10px;">ws subscription monitor</span>
         <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--light-txt-color); margin-right: 10px;">
+        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px;">
           {{ wsSubscriptions.length }}/8 active
         </div>
       </div>
 
       <div v-if="wsSubscriptions.length > 0"
-        style="display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0 6px; border-bottom: 1px solid var(--border-color); background: var(--light-color);">
+        style="display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0 6px; border-bottom: 1px solid var(--ui-light); background: var(--light-color);">
         <div v-for="(sub, index) in wsSubscriptions" :key="sub.id" @click="activeWsTab = index" class="ws-tab"
           :class="{ 'ws-tab-active': activeWsTab === index }">
           <span class="ws-status-dot"
@@ -185,8 +185,8 @@
 
       <div class="msgbox" ref="wsMessageBox">
         <div v-if="wsSubscriptions.length === 0"
-          style="color: var(--light-txt-color); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
-          no active subscriptions<br />enter SessionId below
+          style="color: var(--ui-text-light); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
+          no active subscriptions<br />enter Session ID below
         </div>
         <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
           <div class="message-header incoming">
@@ -210,7 +210,7 @@
     <!-- Column 4: Tool History -->
     <div class="column">
       <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--border-color);">
+        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="clear tool use history" @click="toolHistory.length = 0" />
       </div>
       <div class="msgbox">
@@ -637,10 +637,14 @@ const deleteAllAgents = async () => {
   --agent-color: #444;
   --tool-ok-color: #238b7a;
   --tool-error-color: #ce3d3d;
+
+  --ui-light: #616574;
+  --ui-text-light: #9598a3;
+  --ui-backdrop: #2a2c31;
 }
 
 .column {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--ui-light);
   flex: 1 1 220px;
   display: flex;
   flex-direction: column;
@@ -662,8 +666,8 @@ const deleteAllAgents = async () => {
   height: 150px;
   min-height: 150px;
   width: 100%;
-  border-top: 1px solid var(--border-color);
-  background: var(--light-color);
+  border-top: 1px solid var(--ui-light);
+  background: var(--ui-backdrop);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -678,7 +682,7 @@ const deleteAllAgents = async () => {
 }
 
 .textbox {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--ui-light);
   background: var(--bg-color);
   padding: 6px 8px;
   width: 100%;
@@ -690,7 +694,7 @@ const deleteAllAgents = async () => {
 
 /* WebSocket column footer overrides — set `--ws-footer-height` to change */
 .ws-footer {
-  height: var(--ws-footer-height, 80px);
+  height: var(--ws-footer-height, 70px);
   min-height: var(--ws-footer-height, 70px);
   max-height: var(--ws-footer-height, 200px);
 }
@@ -699,7 +703,7 @@ const deleteAllAgents = async () => {
 .button {
   font-family: inherit;
   height: 100%;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--ui-light);
   padding: 0 15px;
   color: #e7e7e7;
   background: var(--light-color);
@@ -715,7 +719,7 @@ const deleteAllAgents = async () => {
 .micro-label {
   font-size: 11px;
   font-weight: bold;
-  color: var(--light-txt-color);
+  color: var(--ui-text-light);
   white-space: nowrap;
 }
 
@@ -726,12 +730,12 @@ const deleteAllAgents = async () => {
   width: 100%;
   box-sizing: border-box;
   outline: none;
-  color: var(--light-txt-color);
+  color: var(--ui-text-light);
   cursor: pointer;
 }
 
 .copy-note { font-size: 11px; color: var(--assistant-color); margin-left: 5px; }
-.helper-text { font-size: 11px; color: var(--light-txt-color); opacity: 0.6; line-height: 1.4; }
+.helper-text { font-size: 11px; color: var(--ui-text-light); opacity: 0.6; line-height: 1.4; }
 
 .custom-checkbox {
   display: flex;
@@ -743,7 +747,7 @@ const deleteAllAgents = async () => {
 .checkbox-box {
   width: 16px;
   height: 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--ui-light);
   background: #0d0f14;
 }
 .checkbox-box.checked {
@@ -756,18 +760,19 @@ const deleteAllAgents = async () => {
   height: auto;
   min-height: 20px;
   width: 100%;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--ui-light);
   font-size: 12px;
-  color: var(--light-txt-color);
+  color: var(--ui-text-light);
   display: flex;
   align-items: center;
+  background: var(--ui-backdrop);
 }
 
 .minibutton {
   cursor: pointer;
   border: none;
   background-color: transparent;
-  color: var(--light-txt-color);
+  color: var(--ui-text-light);
 }
 .minibutton:hover { color: #e7e7e7; }
 
@@ -808,7 +813,7 @@ const deleteAllAgents = async () => {
 .purposeLabel { background-color: var(--bg-color); padding: 0 5px; margin-left: 2px; font-size: 10px; }
 .clickable-id { cursor: pointer; text-decoration: underline dotted; }
 .button-icon { width: 16px; height: 16px; filter: invert(100%); margin-left: 5px; opacity: 0.5; cursor: pointer; }
-.ws-tab { padding: 3px 8px; border: 1px solid var(--border-color); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.ws-tab { padding: 3px 8px; border: 1px solid var(--ui-light); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 .ws-tab-active { background: var(--bg-color); color: #e7e7e7; }
 .ws-status-dot { width: 6px; height: 6px; border-radius: 50%; }
 .icon { width: 13px; height: 13px; filter: invert(100%); margin-right: 5px; }
