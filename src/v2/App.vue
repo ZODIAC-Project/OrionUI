@@ -64,9 +64,9 @@
         <div v-if="historyView === null" v-for="(agent, index) in agents" :key="index" class="message-wrapper">
           <div class="message-header agent" style="gap:0px">
             <div class="role-label">Agent {{ index }}</div>
-            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
+            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
               <span class="clickable-id" @click="copyAgentId(agent.id)">{{ agent.id }}</span>
-              <span v-if="copiedAgents[agent.id]" style="margin-left:6px; font-size:11px; color: var(--assistant-color);">copied!</span>
+              <span v-if="copiedAgents[agent.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
             </div>
             <div class="spacer"></div>
             <div style="margin-right:10px">
@@ -87,16 +87,16 @@
             </div>
             <div class="spacer"></div>
             <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
-            <img :src="'/src/assets/icons/'+ (agent.paused ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(agent.id)" />
+            <img :src="getIcon(agent.paused ? 'play' : 'pause')" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(agent.id)" />
             <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
           </div>
         </div>
         <div v-else class="message-wrapper" style="height: 100%; margin:0px">
           <div class="message-header agent" style="gap:0px">
             <div class="role-label">Agent {{agents.findIndex(a => a.id === historyView.id)}}</div>
-            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden;">
+            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
               <span class="clickable-id" @click="copyAgentId(historyView.id)">{{ historyView.id }}</span>
-              <span v-if="copiedAgents[historyView.id]" style="margin-left:6px; font-size:11px; color: var(--assistant-color);">copied!</span>
+              <span v-if="copiedAgents[historyView.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
             </div>
             <div class="spacer"></div>
             <div style="margin-right:10px">
@@ -117,7 +117,7 @@
             </div>
             <div class="spacer"></div>
             <img src="../assets/icons/hide.png" class="button-icon" @click="historyView = null" />
-            <img :src="'/src/assets/icons/'+ (historyView.paused ? 'play' : 'pause') + '.png'" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(historyView.id)" />
+            <img :src="getIcon(historyView.paused ? 'play' : 'pause')" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(historyView.id)" />
             <img src="../assets/icons/trash.png" class="button-icon"
               @click="deleteAgent(historyView.id); historyView = null;" />
           </div>
@@ -616,6 +616,11 @@ const deleteAllAgents = async () => {
     console.error(`error deleting agent: HTTP ${res.status}: ${body}`);
   }
 }
+
+function getIcon(name) {
+  return new URL(`../assets/icons/${name}.png`, import.meta.url).href;
+}
+
 </script>
 
 <style scoped>
