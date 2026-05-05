@@ -269,12 +269,18 @@
 
 const showGrafanaDashboard = ref(false)
 const grafanaIframeError = ref(false)
+const buildGrafanaDashboardUrl = (rawUrl) => {
+  if (!rawUrl || rawUrl === 'URL nicht gesetzt') return ''
+
+  const trimmed = rawUrl.trim()
+  if (!trimmed) return ''
+
+  return trimmed
+}
+
 const grafanaDashboardUrl = computed(() => {
-  // Use the hardcoded default or from statusTargets
   const grafana = statusTargets.value.find(t => t.id === 'grafana')
-  return grafana && grafana.url && grafana.url !== 'URL nicht gesetzt'
-    ? grafana.url + '/d/agent-monitoring/agent-monitoring?orgId=1&refresh=10s'
-    : ''
+  return buildGrafanaDashboardUrl(grafana?.url)
 })
 
 const toggleGrafanaDashboard = (url) => {
@@ -328,6 +334,10 @@ const copySessionId = async () => {
 const agentApiBase = ref(window.__APP_CONFIG__?.VITE_AGENT_API_BASE || '/agent-api')
 const accessPurposes = ref('')
 const agentPageId = ref(new URLSearchParams(window.location.search).get('agentId') || '')
+const grafanaBaseUrl =
+  window.__APP_CONFIG__?.VITE_GRAFANA_URL ||
+  import.meta.env.VITE_GRAFANA_URL ||
+  'URL nicht gesetzt'
 
 // Status targets (health-checked URLs). Initialize from envs and allow user edits.
 const STORAGE_KEY = 'orionui_status_targets'
@@ -335,10 +345,26 @@ const defaultTargets = [
   { id: 'broker', label: 'Broker', url: import.meta.env.VITE_BROKER_URL || 'URL nicht gesetzt' },
   { id: 'clients', label: 'MCP Clients', url: import.meta.env.VITE_MCP_CLIENT_URL || 'URL nicht gesetzt' },
   { id: 'llm', label: 'LLM', url: import.meta.env.VITE_LLM_URL || 'URL nicht gesetzt' },
-  { id: 'grafana', label: 'Grafana', url: 'http://localhost:3001' }
+  { id: 'grafana', label: 'Grafana', url: grafanaBaseUrl }
 ]
 
 const statusTargets = ref([])
+
+const normalizeStatusTargets = (targets) => {
+  if (!Array.isArray(targets)) return defaultTargets
+
+  return targets.map((target) => {
+    if (
+      target?.id === 'grafana' &&
+      target?.url === 'http://localhost:3001' &&
+      grafanaBaseUrl !== 'URL nicht gesetzt'
+    ) {
+      return { ...target, url: grafanaBaseUrl }
+    }
+
+    return target
+  })
+}
 
 const loadStatusTargets = () => {
   try {
@@ -346,14 +372,14 @@ const loadStatusTargets = () => {
     if (raw) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed) && parsed.length) {
-        statusTargets.value = parsed
+        statusTargets.value = normalizeStatusTargets(parsed)
         return
       }
     }
   } catch (e) {
     // ignore and fall back to defaults
   }
-  statusTargets.value = defaultTargets
+  statusTargets.value = normalizeStatusTargets(defaultTargets)
 }
 
 const saveStatusTargets = () => {
