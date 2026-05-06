@@ -1,7 +1,27 @@
 <template>
-  <div class="app">
-    <!-- Column 1: Chat -->
-    <div class="column">
+  <div class="page-shell">
+    <div class="top-tabs">
+      <button
+        type="button"
+        class="ws-tab top-tab-button"
+        :class="{ 'ws-tab-active': activeMainTab === 'ui' }"
+        @click="selectMainTab('ui')"
+      >
+        Orion UI
+      </button>
+      <button
+        type="button"
+        class="ws-tab top-tab-button"
+        :class="{ 'ws-tab-active': activeMainTab === 'grafana' }"
+        @click="selectMainTab('grafana')"
+      >
+        Grafana Dashboard
+      </button>
+    </div>
+
+    <div v-if="activeMainTab === 'ui'" class="app">
+      <!-- Column 1: Chat -->
+      <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="clear messages" @click="clearChat" />
@@ -46,8 +66,8 @@
       </div>
     </div>
 
-    <!-- Column 2: Agents -->
-    <div class="column">
+      <!-- Column 2: Agents -->
+      <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="delete agents" @click="deleteAllAgents" />
@@ -161,8 +181,8 @@
       </div>
     </div>
 
-    <!-- Column 3: WebSocket Monitor -->
-    <div class="column">
+      <!-- Column 3: WebSocket Monitor -->
+      <div class="column">
       <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--ui-light);">
         <span style="font-size: 12px; color: var(--ui-text-light); margin-left: 10px;">ws subscription monitor</span>
         <div style="flex-grow: 1"></div>
@@ -207,8 +227,8 @@
       </div>
     </div>
 
-    <!-- Column 4: Tool History -->
-    <div class="column">
+      <!-- Column 4: Tool History -->
+      <div class="column">
       <div class="minioptionbox"
         style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
         <input type="button" class="minibutton" value="clear tool use history" @click="toolHistory.length = 0" />
@@ -229,8 +249,24 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
+    <div v-else class="grafana-view">
+      <div v-if="grafanaDashboardUrl" class="grafana-dashboard-inner">
+        <iframe
+          :src="grafanaDashboardUrl"
+          class="grafana-iframe"
+          frameborder="0"
+          @error="onGrafanaIframeError"
+          @load="onGrafanaIframeLoad"
+        ></iframe>
+        <div v-if="grafanaIframeError" class="grafana-error">Fehler beim Laden des Grafana Dashboards.</div>
+      </div>
+      <div v-else class="grafana-empty">
+        Keine Grafana-URL konfiguriert.
+      </div>
+    </div>
   </div>
 </template>
 
@@ -257,9 +293,35 @@ const messages = reactive([
     timestamp: Date.now(),
   }
 ]);
+const activeMainTab = ref('ui');
+const grafanaIframeError = ref(false);
+const grafanaBaseUrl =
+  window.__APP_CONFIG__?.VITE_GRAFANA_URL ||
+  import.meta.env.VITE_GRAFANA_URL ||
+  'URL nicht gesetzt';
+const grafanaDashboardUrl = computed(() => {
+  if (!grafanaBaseUrl || grafanaBaseUrl === 'URL nicht gesetzt') return '';
+  const trimmed = grafanaBaseUrl.trim();
+  return trimmed || '';
+});
 
 const toolHistory = reactive([]);
 const agents = ref([])
+
+const selectMainTab = (tab) => {
+  activeMainTab.value = tab;
+  if (tab === 'grafana') {
+    grafanaIframeError.value = false;
+  }
+};
+
+const onGrafanaIframeError = () => {
+  grafanaIframeError.value = true;
+};
+
+const onGrafanaIframeLoad = () => {
+  grafanaIframeError.value = false;
+};
 
 const generateSessionId = () => {
   try {
@@ -624,17 +686,10 @@ function getIcon(name) {
 </script>
 
 <style scoped>
-.app {
-  display: flex;
-  flex-direction: row;
-  height: 100vh;
-  gap: 10px;
-  padding: 30px;
-  max-width: 1900px;
-  margin: 0 auto;
-  font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-wrap: break-word;
-  overflow-x: auto;
+.page-shell {
+  min-height: 100vh;
+  padding: 18px 30px 30px;
+  box-sizing: border-box;
 
   --assistant-color: #238b7a;
   --user-color: #395864;
@@ -646,6 +701,63 @@ function getIcon(name) {
   --ui-light: #616574;
   --ui-text-light: #9598a3;
   --ui-backdrop: #2a2c31;
+}
+
+.top-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 auto 12px;
+  max-width: 1900px;
+}
+
+.top-tab-button {
+  background: var(--light-color);
+  color: var(--ui-text-light);
+}
+
+.app {
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - 72px);
+  gap: 10px;
+  max-width: 1900px;
+  margin: 0 auto;
+  font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-wrap: break-word;
+  overflow-x: auto;
+}
+
+.grafana-view {
+  max-width: 1900px;
+  margin: 0 auto;
+}
+
+.grafana-dashboard-inner {
+  width: 100%;
+  min-height: calc(100vh - 112px);
+  padding: 10px;
+  border: 1px solid var(--ui-light);
+  background: var(--ui-backdrop);
+  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.7);
+  box-sizing: border-box;
+}
+
+.grafana-iframe {
+  width: 100%;
+  min-height: calc(100vh - 134px);
+  border: 1px solid var(--ui-light);
+  background: #111318;
+}
+
+.grafana-error,
+.grafana-empty {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ui-text-light);
+}
+
+.grafana-error {
+  color: var(--error-color);
 }
 
 .column {
