@@ -89,12 +89,14 @@
               <span v-if="copiedAgents[agent.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
             </div>
             <div class="spacer"></div>
-            <div style="margin-right:10px">
+            <div v-if="agent.intervalMs !== null" style="margin-right:10px">
               <span v-if="!agent.runOnce">every</span> {{ agent.intervalMs / 1000 }} sec
             </div>
             <div style="margin-right:10px; opacity:0.5" v-if="agent.runOnce">(run-once)</div>
           </div>
-
+          <div class="message-body agent" v-if="agent.listenTopic !== null" style="margin-bottom:-1px; padding:2px; padding-left:10px">
+             Listening to topic: {{ agent.listenTopic }}
+          </div>
           <div class="message-body agent">
             {{ agent.text }}
           </div>
