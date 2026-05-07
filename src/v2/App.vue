@@ -121,12 +121,14 @@
               <span v-if="copiedAgents[historyView.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
             </div>
             <div class="spacer"></div>
-            <div style="margin-right:10px">
+            <div v-if="historyView.intervalMs !== null" style="margin-right:10px">
               <span v-if="!historyView.runOnce">every</span> {{ historyView.intervalMs / 1000 }} sec
             </div>
             <div style="margin-right:10px; opacity:0.5" v-if="historyView.runOnce">(run-once)</div>
           </div>
-
+          <div class="message-body agent" v-if="historyView.listenTopic !== null" style="margin-bottom:-1px; padding:2px; padding-left:10px">
+             <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span style="font-weight: 600; margin-left: -4px;"> {{ historyView.listenTopic }} </span>
+          </div>
           <div class="message-body agent">
             {{ historyView.text }}
           </div>
