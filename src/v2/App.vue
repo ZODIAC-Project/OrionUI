@@ -95,7 +95,7 @@
             <div style="margin-right:10px; opacity:0.5" v-if="agent.runOnce">(run-once)</div>
           </div>
           <div class="message-body agent" v-if="agent.listenTopic !== null" style="margin-bottom:-1px; padding:2px; padding-left:10px">
-             Listening to topic: {{ agent.listenTopic }}
+             <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span style="font-weight: 600; margin-left: -4px;"> {{ agent.listenTopic }} </span>
           </div>
           <div class="message-body agent">
             {{ agent.text }}
@@ -926,10 +926,10 @@ function getIcon(name) {
   margin-top: -1px;
 }
 
-.role-label { padding-left: 10px; text-transform: capitalize; }
+.role-label { padding-left: 10px; }
 .spacer { flex-grow: 1; }
 .timestamp { padding-right: 10px; opacity: 0.8; }
-.purposeLabel { background-color: var(--bg-color); padding: 0 5px; margin-left: 2px; font-size: 10px; }
+.purposeLabel { background-color: var(--agent-color); padding: 0 5px; margin-left: 2px; padding-top:2px; font-size: 10px; }
 .clickable-id { cursor: pointer; text-decoration: underline dotted; }
 .button-icon { width: 16px; height: 16px; filter: invert(100%); margin-left: 5px; opacity: 0.5; cursor: pointer; }
 .ws-tab { padding: 3px 8px; border: 1px solid var(--ui-light); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
