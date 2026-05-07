@@ -688,8 +688,9 @@ function getIcon(name) {
 <style scoped>
 .page-shell {
   min-height: 100vh;
-  padding: 18px 30px 30px;
+  padding: 12px 30px 30px;
   box-sizing: border-box;
+  font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
   --assistant-color: #238b7a;
   --user-color: #395864;
@@ -718,11 +719,10 @@ function getIcon(name) {
 .app {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 72px);
+  height: calc(100vh - 79px);
   gap: 10px;
   max-width: 1900px;
   margin: 0 auto;
-  font-family: var(--font-mono), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-wrap: break-word;
   overflow-x: auto;
 }
