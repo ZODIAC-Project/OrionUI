@@ -1,20 +1,12 @@
 <template>
   <div class="page-shell">
     <div class="top-tabs">
-      <button
-        type="button"
-        class="ws-tab top-tab-button"
-        :class="{ 'ws-tab-active': activeMainTab === 'ui' }"
-        @click="selectMainTab('ui')"
-      >
+      <button type="button" class="ws-tab top-tab-button" :class="{ 'ws-tab-active': activeMainTab === 'ui' }"
+        @click="selectMainTab('ui')">
         Orion UI
       </button>
-      <button
-        type="button"
-        class="ws-tab top-tab-button"
-        :class="{ 'ws-tab-active': activeMainTab === 'grafana' }"
-        @click="selectMainTab('grafana')"
-      >
+      <button type="button" class="ws-tab top-tab-button" :class="{ 'ws-tab-active': activeMainTab === 'grafana' }"
+        @click="selectMainTab('grafana')">
         Grafana Dashboard
       </button>
     </div>
@@ -22,249 +14,270 @@
     <div v-if="activeMainTab === 'ui'" class="app">
       <!-- Column 1: Chat -->
       <div class="column">
-      <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
-        <input type="button" class="minibutton" value="clear messages" @click="clearChat" />
-        <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
-          MCP status:
-          <span :style="{ color: MCPstatus === null ? 'var(--ui-text-light)' : MCPstatus ? '#3dce3d' : '#ce3d3d' }">
-            {{ MCPstatus === null ? 'checking...' : MCPstatus ? 'online' : 'offline' }}
-          </span>
+        <div class="minioptionbox"
+          style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
+          <input type="button" class="minibutton" value="clear messages" @click="clearChat" />
+          <div style="flex-grow: 1"></div>
+          <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
+            MCP status:
+            <span :style="{ color: MCPstatus === null ? 'var(--ui-text-light)' : MCPstatus ? '#3dce3d' : '#ce3d3d' }">
+              {{ MCPstatus === null ? 'checking...' : MCPstatus ? 'online' : 'offline' }}
+            </span>
+          </div>
         </div>
-      </div>
-      <div class="msgbox">
-        <div v-for="(message, index) in messages" :key="index" class="message-wrapper">
-          <div class="message-header" :class="message.role">
-            <div class="role-label">{{ message.role }}</div>
-            <div class="spacer"></div>
-            <div class="timestamp">
-              {{ new Date(message.timestamp).toLocaleTimeString() }}
+        <div class="msgbox">
+          <div v-for="(message, index) in messages" :key="index" class="message-wrapper">
+            <div class="message-header" :class="message.role">
+              <div class="role-label">{{ message.role }}</div>
+              <div class="spacer"></div>
+              <div class="timestamp">
+                {{ new Date(message.timestamp).toLocaleTimeString() }}
+              </div>
+            </div>
+
+            <div class="message-body" :class="message.role">
+              {{ message.content }}
             </div>
           </div>
-
-          <div class="message-body" :class="message.role">
-            {{ message.content }}
+        </div>
+        <div class="optionbox">
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="direct message..." v-model="msgText"
+              v-on:keyup.enter="sendMessage" />
+            <input type="button" class="button primary" :value="isSending ? '...' : 'SEND'" @click="sendMessage"
+              :disabled="isSending" />
+          </div>
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="accessPurposes" />
+          </div>
+          <div class="footer-row">
+            <span class="micro-label">SESSION ID:</span>
+            <input type="text" class="minitextbox" :value="sessionId" readonly @click="copySessionId" />
+            <span v-if="copiedSession" class="copy-note">copied!</span>
           </div>
         </div>
       </div>
-      <div class="optionbox">
-        <div class="footer-row">
-          <input type="text" class="textbox" placeholder="direct message..." v-model="msgText"
-            v-on:keyup.enter="sendMessage" />
-          <input type="button" class="button primary" :value="isSending ? '...' : 'SEND'" @click="sendMessage"
-            :disabled="isSending" />
-        </div>
-        <div class="footer-row">
-          <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="accessPurposes" />
-        </div>
-        <div class="footer-row">
-           <span class="micro-label">SESSION ID:</span>
-           <input type="text" class="minitextbox" :value="sessionId" readonly @click="copySessionId" />
-           <span v-if="copiedSession" class="copy-note">copied!</span>
-        </div>
-      </div>
-    </div>
 
       <!-- Column 2: Agents -->
       <div class="column">
-      <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
-        <input type="button" class="minibutton" value="delete agents" @click="deleteAllAgents" />
-        <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
-          agent manager status:
-          <span
-            :style="{ color: agentManagerStatus === null ? 'var(--ui-text-light)' : agentManagerStatus ? '#3dce3d' : '#ce3d3d' }">
-            {{ agentManagerStatus === null ? 'checking...' : agentManagerStatus ? 'online' : 'offline' }}
-          </span>
-        </div>
-      </div>
-      <div class="msgbox">
-        <div v-if="historyView === null" v-for="(agent, index) in agents" :key="index" class="message-wrapper">
-          <div class="message-header agent" style="gap:0px">
-            <div class="role-label">Agent {{ index }}</div>
-            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
-              <span class="clickable-id" @click="copyAgentId(agent.id)">{{ agent.id }}</span>
-              <span v-if="copiedAgents[agent.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
-            </div>
-            <div class="spacer"></div>
-            <div v-if="agent.intervalMs !== null" style="margin-right:10px">
-              <span v-if="!agent.runOnce">every</span> {{ agent.intervalMs / 1000 }} sec
-            </div>
-            <div style="margin-right:10px; opacity:0.5" v-if="agent.runOnce">(run-once)</div>
-          </div>
-          <div class="message-body agent" v-if="agent.listenTopic !== null" style="margin-bottom:-1px; padding:2px; padding-left:10px">
-             <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span style="font-weight: 600; margin-left: -4px;"> {{ agent.listenTopic }} </span>
-          </div>
-          <div class="message-body agent">
-            {{ agent.text }}
-          </div>
-
-          <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
-            <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
-            <div v-for="(purpose, index) in agent.purposes" :key="index" class="purposeLabel">
-              <span style="opacity:0.5">{{ purpose }}</span>
-            </div>
-            <div class="spacer"></div>
-            <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
-            <img :src="getIcon(agent.paused ? 'play' : 'pause')" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(agent.id)" />
-            <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
+        <div class="minioptionbox"
+          style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
+          <input type="button" class="minibutton" value="delete agents" @click="deleteAllAgents" />
+          <div style="flex-grow: 1"></div>
+          <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px">
+            agent manager status:
+            <span
+              :style="{ color: agentManagerStatus === null ? 'var(--ui-text-light)' : agentManagerStatus ? '#3dce3d' : '#ce3d3d' }">
+              {{ agentManagerStatus === null ? 'checking...' : agentManagerStatus ? 'online' : 'offline' }}
+            </span>
           </div>
         </div>
-        <div v-else class="message-wrapper" style="height: 100%; margin:0px">
-          <div class="message-header agent" style="gap:0px">
-            <div class="role-label">Agent {{agents.findIndex(a => a.id === historyView.id)}}</div>
-            <div style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
-              <span class="clickable-id" @click="copyAgentId(historyView.id)">{{ historyView.id }}</span>
-              <span v-if="copiedAgents[historyView.id]" style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
+        <div class="msgbox">
+          <div v-if="historyView === null" v-for="(agent, index) in agents" :key="index" class="message-wrapper">
+            <div class="message-header agent" style="gap:0px">
+              <div class="role-label">Agent {{ index }}</div>
+              <div
+                style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
+                <span class="clickable-id" @click="copyAgentId(agent.id)">{{ agent.id }}</span>
+                <span v-if="copiedAgents[agent.id]"
+                  style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
+              </div>
+              <div class="spacer"></div>
+              <div v-if="agent.intervalMs !== null" style="margin-right:10px">
+                <span v-if="!agent.runOnce">every</span> {{ agent.intervalMs / 1000 }} sec
+              </div>
+              <div style="margin-right:10px; opacity:0.5" v-if="agent.runOnce">(run-once)</div>
             </div>
-            <div class="spacer"></div>
-            <div v-if="historyView.intervalMs !== null" style="margin-right:10px">
-              <span v-if="!historyView.runOnce">every</span> {{ historyView.intervalMs / 1000 }} sec
+            <div class="message-body agent" v-if="agent.listenTopic !== null"
+              style="margin-bottom:-1px; padding:2px; padding-left:10px">
+              <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span
+                style="font-weight: 600; margin-left: -4px;"> {{ agent.listenTopic }} </span>
             </div>
-            <div style="margin-right:10px; opacity:0.5" v-if="historyView.runOnce">(run-once)</div>
-          </div>
-          <div class="message-body agent" v-if="historyView.listenTopic !== null" style="margin-bottom:-1px; padding:2px; padding-left:10px">
-             <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span style="font-weight: 600; margin-left: -4px;"> {{ historyView.listenTopic }} </span>
-          </div>
-          <div class="message-body agent">
-            {{ historyView.text }}
-          </div>
+            <div class="message-body agent">
+              {{ agent.text }}
+            </div>
 
-          <div class="message-header agent"
-            style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
-            <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
-            <div v-for="(purpose, index) in historyView.purposes" :key="index" class="purposeLabel">
-              <span style="opacity:0.5">{{ purpose }}</span>
+            <div class="message-header agent"
+              style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
+              <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
+              <div v-for="(purpose, index) in agent.purposes" :key="index" class="purposeLabel">
+                <span style="opacity:0.5">{{ purpose }}</span>
+              </div>
+              <div class="spacer"></div>
+              <img src="../assets/icons/eye.png" class="button-icon" @click="historyView = agent" />
+              <img :src="getIcon(agent.paused ? 'play' : 'pause')" class="button-icon"
+                style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px"
+                @click="toggleAgentPause(agent.id)" />
+              <img src="../assets/icons/trash.png" class="button-icon" @click="deleteAgent(agent.id)" />
             </div>
-            <div class="spacer"></div>
-            <img src="../assets/icons/hide.png" class="button-icon" @click="historyView = null" />
-            <img :src="getIcon(historyView.paused ? 'play' : 'pause')" class="button-icon" style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px" @click="toggleAgentPause(historyView.id)" />
-            <img src="../assets/icons/trash.png" class="button-icon"
-              @click="deleteAgent(historyView.id); historyView = null;" />
           </div>
-          <div class="msgbox"
-            style="border: 1px solid var(--ui-light); border-top:none; background-color: var(--light-color);">
-            <div v-for="(message, index) in historyMessages" :key="index" class="message-wrapper">
-              <div class="message-header" :class="message.type">
-                <div class="role-label">{{ message.type }}</div>
-                <div class="spacer"></div>
-                <div class="timestamp">
-                  {{ new Date(message.timestamp * 1000).toLocaleTimeString() }}
+          <div v-else class="message-wrapper" style="height: 100%; margin:0px">
+            <div class="message-header agent" style="gap:0px">
+              <div class="role-label">Agent {{agents.findIndex(a => a.id === historyView.id)}}</div>
+              <div
+                style="margin-left:10px; margin-right:10px; opacity: 0.5; text-overflow: ellipsis; overflow: hidden; max-width: 180px; white-space: nowrap;">
+                <span class="clickable-id" @click="copyAgentId(historyView.id)">{{ historyView.id }}</span>
+                <span v-if="copiedAgents[historyView.id]"
+                  style="position: absolute; margin-left: -70px; color: rgb(61, 206, 61); opacity: 1.0">copied!</span>
+              </div>
+              <div class="spacer"></div>
+              <div v-if="historyView.intervalMs !== null" style="margin-right:10px">
+                <span v-if="!historyView.runOnce">every</span> {{ historyView.intervalMs / 1000 }} sec
+              </div>
+              <div style="margin-right:10px; opacity:0.5" v-if="historyView.runOnce">(run-once)</div>
+            </div>
+            <div class="message-body agent" v-if="historyView.listenTopic !== null"
+              style="margin-bottom:-1px; padding:2px; padding-left:10px">
+              <span style="opacity:0.5; font-weight: 600;">-> Listening to topic: </span> <span
+                style="font-weight: 600; margin-left: -4px;"> {{ historyView.listenTopic }} </span>
+            </div>
+            <div class="message-body agent">
+              {{ historyView.text }}
+            </div>
+
+            <div class="message-header agent"
+              style="gap:0px; background-color: var(--light-color); border: 1px solid var(--ui-light); border-top:none; padding-right: 2px">
+              <div class="role-label" style="opacity: 0.5; margin-right:3px">Purpose:</div>
+              <div v-for="(purpose, index) in historyView.purposes" :key="index" class="purposeLabel">
+                <span style="opacity:0.5">{{ purpose }}</span>
+              </div>
+              <div class="spacer"></div>
+              <img src="../assets/icons/hide.png" class="button-icon" @click="historyView = null" />
+              <img :src="getIcon(historyView.paused ? 'play' : 'pause')" class="button-icon"
+                style="  width: 12px; height: 12px; margin-top: 2px; margin-left:7px"
+                @click="toggleAgentPause(historyView.id)" />
+              <img src="../assets/icons/trash.png" class="button-icon"
+                @click="deleteAgent(historyView.id); historyView = null;" />
+            </div>
+            <div class="msgbox"
+              style="border: 1px solid var(--ui-light); border-top:none; background-color: var(--light-color);">
+              <div v-for="(message, index) in historyMessages" :key="index" class="message-wrapper">
+                <div class="message-header" :class="message.type">
+                  <div class="role-label">{{ message.type }}</div>
+                  <div class="spacer"></div>
+                  <div class="timestamp">
+                    {{ new Date(message.timestamp * 1000).toLocaleTimeString() }}
+                  </div>
+                </div>
+
+                <div class="message-body" :class="message.type">
+                  {{ message.message }}
                 </div>
               </div>
-
-              <div class="message-body" :class="message.type">
-                {{ message.message }}
-              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="optionbox">
-        <div class="footer-row">
-          <input type="text" class="textbox" placeholder="agent text" v-model="agentText" />
-          <input type="text" class="textbox" placeholder="sec" v-model="interval"
-            style="max-width: 60px;" />
-        </div>
-        <div class="footer-row">
-          <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="agentPurpose" />
-          <input type="text" class="textbox" placeholder="mem" v-model="memoryWindow"
-            style="max-width: 60px;" />
-        </div>
-        <div class="footer-row">
-          <div class="custom-checkbox" @click="runOnce = !runOnce" style="flex-shrink: 0;">
-            <div class="checkbox-box" :class="{ 'checked': runOnce }"></div>
-            <span class="micro-label">RUN ONCE</span>
+        <div class="optionbox">
+          <div class="footer-row" style="position: absolute; margin-top: -45px;">
+            <div
+              :style="{ 'cursor': 'pointer', 'background-color': 'var(--ui-backdrop)', 'border': 'var(--ui-light) 1px solid', 'padding': '2px 6px', 'color': 'var(--ui-light)', ...(agentType === agentTypes.TIMED && { 'border-bottom': '1px solid var(--ui-backdrop)', 'color': 'white' }) }"
+              @click="() => { agentType = agentTypes.TIMED }">
+              <p style="margin:0px; font-size: 12px;">timed agent</p>
+            </div>
+            <div
+              :style="{ 'cursor': 'pointer', 'background-color': 'var(--ui-backdrop)', 'border': 'var(--ui-light) 1px solid', 'padding': '2px 6px', 'color': 'var(--ui-light)', ...(agentType === agentTypes.EVENT && { 'border-bottom': '1px solid var(--ui-backdrop)', 'color': 'white' }) }"
+              @click="() => { agentType = agentTypes.EVENT }">
+              <p style="margin:0px; font-size: 12px;">event agent</p>
+            </div>
+            <span class="micro-label"></span>
           </div>
-          <input type="button" class="button primary fill" value="LAUNCH AGENT" @click="launchAgent"
-            :disabled="isLaunching" style="flex-shrink: 0; min-width: 0;" />
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="agent text" v-model="agentText" />
+            <input v-if="agentType === agentTypes.TIMED" type="text" class="textbox" placeholder="sec"
+              v-model="interval" style="max-width: 60px;" />
+            <input v-else type="text" class="textbox" placeholder="listen topic" v-model="listenTopic"
+              style="max-width: 160px;" />
+          </div>
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="purpose" v-model="agentPurpose" />
+            <input type="text" class="textbox" placeholder="mem" v-model="memoryWindow" style="max-width: 60px;" />
+          </div>
+          <div class="footer-row">
+            <div class="custom-checkbox" @click="runOnce = !runOnce" style="flex-shrink: 0;">
+              <div class="checkbox-box" :class="{ 'checked': runOnce }"></div>
+              <span class="micro-label">RUN ONCE</span>
+            </div>
+            <input type="button" class="button primary fill" value="LAUNCH AGENT" @click="launchAgent"
+              :disabled="isLaunching" style="flex-shrink: 0; min-width: 0;" />
+          </div>
         </div>
       </div>
-    </div>
 
       <!-- Column 3: WebSocket Monitor -->
       <div class="column">
-      <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--ui-light);">
-        <span style="font-size: 12px; color: var(--ui-text-light); margin-left: 10px;">ws subscription monitor</span>
-        <div style="flex-grow: 1"></div>
-        <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px;">
-          {{ wsSubscriptions.length }}/8 active
-        </div>
-      </div>
-
-      <div v-if="wsSubscriptions.length > 0"
-        style="display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0 6px; border-bottom: 1px solid var(--ui-light); background: var(--light-color);">
-        <div v-for="(sub, index) in wsSubscriptions" :key="sub.id" @click="activeWsTab = index" class="ws-tab"
-          :class="{ 'ws-tab-active': activeWsTab === index }">
-          <span class="ws-status-dot"
-            :style="{ background: sub.status === 'connected' ? '#3dce3d' : '#ce3d3d' }">
-          </span>
-          <span class="ws-tab-label">{{ sub.label }}</span>
-          <span class="ws-tab-close" @click.stop="removeWsSubscription(sub.id)">×</span>
-        </div>
-      </div>
-
-      <div class="msgbox" ref="wsMessageBox">
-        <div v-if="wsSubscriptions.length === 0"
-          style="color: var(--ui-text-light); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
-          no active subscriptions<br />enter Session ID below
-        </div>
-        <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
-          <div class="message-header incoming">
-            <div class="role-label">incoming</div>
-            <div class="spacer"></div>
-            <div class="timestamp">{{ new Date(msg.timestamp).toLocaleTimeString() }}</div>
+        <div class="minioptionbox" style="border:none; border-bottom:1px solid var(--ui-light);">
+          <span style="font-size: 12px; color: var(--ui-text-light); margin-left: 10px;">ws subscription monitor</span>
+          <div style="flex-grow: 1"></div>
+          <div style="font-size: 12px; color: var(--ui-text-light); margin-right: 10px;">
+            {{ wsSubscriptions.length }}/8 active
           </div>
-          <div class="message-body incoming">{{ msg.data }}</div>
+        </div>
+
+        <div v-if="wsSubscriptions.length > 0"
+          style="display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0 6px; border-bottom: 1px solid var(--ui-light); background: var(--light-color);">
+          <div v-for="(sub, index) in wsSubscriptions" :key="sub.id" @click="activeWsTab = index" class="ws-tab"
+            :class="{ 'ws-tab-active': activeWsTab === index }">
+            <span class="ws-status-dot" :style="{ background: sub.status === 'connected' ? '#3dce3d' : '#ce3d3d' }">
+            </span>
+            <span class="ws-tab-label">{{ sub.label }}</span>
+            <span class="ws-tab-close" @click.stop="removeWsSubscription(sub.id)">×</span>
+          </div>
+        </div>
+
+        <div class="msgbox" ref="wsMessageBox">
+          <div v-if="wsSubscriptions.length === 0"
+            style="color: var(--ui-text-light); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
+            no active subscriptions<br />enter Session ID below
+          </div>
+          <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
+            <div class="message-header incoming">
+              <div class="role-label">incoming</div>
+              <div class="spacer"></div>
+              <div class="timestamp">{{ new Date(msg.timestamp).toLocaleTimeString() }}</div>
+            </div>
+            <div class="message-body incoming">{{ msg.data }}</div>
+          </div>
+        </div>
+        <div class="optionbox ws-footer">
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="session ID" v-model="newWsUrl"
+              v-on:keyup.enter="addWsSubscription" />
+            <input type="button" class="button primary" value="CONNECT" @click="addWsSubscription"
+              :disabled="!newWsUrl.trim() || wsSubscriptions.length >= 8" />
+          </div>
         </div>
       </div>
-      <div class="optionbox ws-footer">
-        <div class="footer-row">
-          <input type="text" class="textbox" placeholder="session ID" v-model="newWsUrl"
-            v-on:keyup.enter="addWsSubscription" />
-          <input type="button" class="button primary" value="CONNECT" @click="addWsSubscription"
-            :disabled="!newWsUrl.trim() || wsSubscriptions.length >= 8" />
-        </div>
-      </div>
-    </div>
 
       <!-- Column 4: Tool History -->
       <div class="column">
-      <div class="minioptionbox"
-        style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
-        <input type="button" class="minibutton" value="clear tool use history" @click="toolHistory.length = 0" />
-      </div>
-      <div class="msgbox">
-        <div v-for="(toolUse, index) in toolHistory" :key="index" class="message-wrapper">
-          <div class="message-header" :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
-            <img v-if="toolUse.accepted" src="../assets/icons/check.png" class="icon" style="margin-left:4px; margin-top:2px"/>
-            <img v-else src="../assets/icons/trash.png" class="icon" style="margin-left:4px; margin-top:2px"/>
-            <div class="role-label" style="padding-left:0px">{{ toolUse.tool }}</div>
-            <div class="spacer"></div>
-          </div>
-          <div v-if="toolUse.parameters && Object.keys(toolUse.parameters).length > 0" class="message-body"
-            :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
-            <div v-for="(value, key) in toolUse.parameters" :key="key">
-              <span style="font-weight: 600;">{{ key }}:</span> {{ value }}
+        <div class="minioptionbox"
+          style="padding-left: 10px; min-height:20px; display: flex; border:none; border-bottom:1px solid var(--ui-light);">
+          <input type="button" class="minibutton" value="clear tool use history" @click="toolHistory.length = 0" />
+        </div>
+        <div class="msgbox">
+          <div v-for="(toolUse, index) in toolHistory" :key="index" class="message-wrapper">
+            <div class="message-header" :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
+              <img v-if="toolUse.accepted" src="../assets/icons/check.png" class="icon"
+                style="margin-left:4px; margin-top:2px" />
+              <img v-else src="../assets/icons/trash.png" class="icon" style="margin-left:4px; margin-top:2px" />
+              <div class="role-label" style="padding-left:0px">{{ toolUse.tool }}</div>
+              <div class="spacer"></div>
+            </div>
+            <div v-if="toolUse.parameters && Object.keys(toolUse.parameters).length > 0" class="message-body"
+              :class="{ 'tool-ok': toolUse.accepted, 'tool-error': !toolUse.accepted }">
+              <div v-for="(value, key) in toolUse.parameters" :key="key">
+                <span style="font-weight: 600;">{{ key }}:</span> {{ value }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
 
     <div v-else class="grafana-view">
       <div v-if="grafanaDashboardUrl" class="grafana-dashboard-inner">
-        <iframe
-          :src="grafanaDashboardUrl"
-          class="grafana-iframe"
-          frameborder="0"
-          @error="onGrafanaIframeError"
-          @load="onGrafanaIframeLoad"
-        ></iframe>
+        <iframe :src="grafanaDashboardUrl" class="grafana-iframe" frameborder="0" @error="onGrafanaIframeError"
+          @load="onGrafanaIframeLoad"></iframe>
         <div v-if="grafanaIframeError" class="grafana-error">Fehler beim Laden des Grafana Dashboards.</div>
       </div>
       <div v-else class="grafana-empty">
@@ -282,11 +295,18 @@ const AGENT_URL = "http://130.149.158.133:30086";
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
 const SUBSCRIPTION_BASE_URL = "ws://130.149.158.32:30002/ws/";
 
+const agentTypes = {
+  TIMED: 'timed',
+  EVENT: 'event'
+}
+
+const agentType = ref(agentTypes.TIMED);
 const runOnce = ref(false);
 const historyView = ref(null);
 const historyMessages = ref([]);
 const agentText = ref('');
 const interval = ref('');
+const listenTopic = ref('');
 const agentPurpose = ref('');
 const memoryWindow = ref('');
 const msgText = ref('');
@@ -423,10 +443,10 @@ const addWsSubscription = () => {
   socket.onclose = () => { if (sub.status !== 'removed') sub.status = 'closed'; };
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    
+
     // Filter out keepalive pings
     if (data.type === 'ping') return;
-    
+
     sub.messages.unshift({ data: event.data, timestamp: Date.now() });
     if (sub.messages.length > 200) sub.messages.pop();
   };
@@ -609,19 +629,29 @@ const launchAgent = async () => {
   memoryWindow.value = "";
   agentPurpose.value = "";
 
+  let body = agentType.value === agentTypes.TIMED
+    ? JSON.stringify({
+      intervalMs: intervalMs,
+      runOnce: once,
+      text: text,
+      memoryWindow: memWindow,
+      purposes: purposes
+    })
+    : JSON.stringify({
+      listenTopic: listenTopic.value.trim(),
+      runOnce: once,
+      text: text,
+      memoryWindow: memWindow,
+      purposes: purposes
+    });
+
   try {
     let response = await fetch(`${AGENT_URL}/agents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        intervalMs: intervalMs,
-        runOnce: once,
-        text: text,
-        memoryWindow: memWindow,
-        purposes: purposes
-      })
+      body: body
     })
   } catch (e) {
     console.error(`error while launching agent: ${e}`)
@@ -819,7 +849,10 @@ function getIcon(name) {
   min-height: var(--ws-footer-height, 70px);
   max-height: var(--ws-footer-height, 200px);
 }
-.textbox:focus { border-color: #888; }
+
+.textbox:focus {
+  border-color: #888;
+}
 
 .button {
   font-family: inherit;
@@ -831,11 +864,28 @@ function getIcon(name) {
   cursor: pointer;
   white-space: nowrap;
 }
-.footer-row .button { height: 100%; }
-.button.primary { border-color: var(--assistant-color); color: var(--assistant-color); }
-.button:hover { background: var(--bg-color); }
-.button:disabled { opacity: 0.3; cursor: not-allowed; }
-.button.fill { flex: 1 0 auto; }
+
+.footer-row .button {
+  height: 100%;
+}
+
+.button.primary {
+  border-color: var(--assistant-color);
+  color: var(--assistant-color);
+}
+
+.button:hover {
+  background: var(--bg-color);
+}
+
+.button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.button.fill {
+  flex: 1 0 auto;
+}
 
 .micro-label {
   font-size: 11px;
@@ -855,8 +905,18 @@ function getIcon(name) {
   cursor: pointer;
 }
 
-.copy-note { font-size: 11px; color: var(--assistant-color); margin-left: 5px; }
-.helper-text { font-size: 11px; color: var(--ui-text-light); opacity: 0.6; line-height: 1.4; }
+.copy-note {
+  font-size: 11px;
+  color: var(--assistant-color);
+  margin-left: 5px;
+}
+
+.helper-text {
+  font-size: 11px;
+  color: var(--ui-text-light);
+  opacity: 0.6;
+  line-height: 1.4;
+}
 
 .custom-checkbox {
   display: flex;
@@ -865,12 +925,14 @@ function getIcon(name) {
   cursor: pointer;
   user-select: none;
 }
+
 .checkbox-box {
   width: 16px;
   height: 16px;
   border: 1px solid var(--ui-light);
   background: #0d0f14;
 }
+
 .checkbox-box.checked {
   background: var(--assistant-color);
 }
@@ -895,32 +957,99 @@ function getIcon(name) {
   background-color: transparent;
   color: var(--ui-text-light);
 }
-.minibutton:hover { color: #e7e7e7; }
 
-.message-wrapper { font-size: 12px; margin-bottom: 10px; width: 100%; display: flex; flex-direction: column; }
-.message-header { display: flex; gap: 10px; font-weight: 600; color: white; padding: 2px 0; }
-.message-header.assistant { background-color: var(--assistant-color); }
-.message-header.user { background-color: var(--user-color); }
-.message-header.agent { background-color: var(--agent-color); }
-.message-header.incoming { background-color: var(--assistant-color); }
-.message-header.outgoing { background-color: var(--agent-color); }
-.message-header.error { display: none; }
-.message-header.tool-ok { background-color: color-mix(in srgb, var(--tool-ok-color), transparent 80%); border: 1px solid var(--tool-ok-color); }
-.message-header.tool-error { background-color: color-mix(in srgb, var(--tool-error-color), transparent 80%); border: 1px solid var(--tool-error-color); }
+.minibutton:hover {
+  color: #e7e7e7;
+}
 
-.message-body { background: var(--light-color); padding: 10px; border: 1px solid transparent; }
-.message-body.assistant { border-color: var(--assistant-color); }
-.message-body.user { border-color: var(--user-color); }
-.message-body.agent { border-color: var(--agent-color); }
-.message-body.incoming { border-color: var(--assistant-color); }
-.message-body.outgoing { border-color: var(--agent-color); }
-.message-body.error {  color: var(--error-color);border-color: var(--error-color); }
+.message-wrapper {
+  font-size: 12px;
+  margin-bottom: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-header {
+  display: flex;
+  gap: 10px;
+  font-weight: 600;
+  color: white;
+  padding: 2px 0;
+}
+
+.message-header.assistant {
+  background-color: var(--assistant-color);
+}
+
+.message-header.user {
+  background-color: var(--user-color);
+}
+
+.message-header.agent {
+  background-color: var(--agent-color);
+}
+
+.message-header.incoming {
+  background-color: var(--assistant-color);
+}
+
+.message-header.outgoing {
+  background-color: var(--agent-color);
+}
+
+.message-header.error {
+  display: none;
+}
+
+.message-header.tool-ok {
+  background-color: color-mix(in srgb, var(--tool-ok-color), transparent 80%);
+  border: 1px solid var(--tool-ok-color);
+}
+
+.message-header.tool-error {
+  background-color: color-mix(in srgb, var(--tool-error-color), transparent 80%);
+  border: 1px solid var(--tool-error-color);
+}
+
+.message-body {
+  background: var(--light-color);
+  padding: 10px;
+  border: 1px solid transparent;
+}
+
+.message-body.assistant {
+  border-color: var(--assistant-color);
+}
+
+.message-body.user {
+  border-color: var(--user-color);
+}
+
+.message-body.agent {
+  border-color: var(--agent-color);
+}
+
+.message-body.incoming {
+  border-color: var(--assistant-color);
+}
+
+.message-body.outgoing {
+  border-color: var(--agent-color);
+}
+
+.message-body.error {
+  color: var(--error-color);
+  border-color: var(--error-color);
+}
+
 .message-body.tool-ok {
   border-color: var(--tool-ok-color);
   background-color: color-mix(in srgb, var(--tool-ok-color), transparent 90%);
   color: var(--tool-ok-color);
   margin-top: -1px;
 }
+
 .message-body.tool-error {
   border-color: var(--tool-error-color);
   background-color: color-mix(in srgb, var(--tool-error-color), transparent 90%);
@@ -928,14 +1057,66 @@ function getIcon(name) {
   margin-top: -1px;
 }
 
-.role-label { padding-left: 10px; }
-.spacer { flex-grow: 1; }
-.timestamp { padding-right: 10px; opacity: 0.8; }
-.purposeLabel { background-color: var(--agent-color); padding: 0 5px; margin-left: 2px; padding-top:2px; font-size: 10px; }
-.clickable-id { cursor: pointer; text-decoration: underline dotted; }
-.button-icon { width: 16px; height: 16px; filter: invert(100%); margin-left: 5px; opacity: 0.5; cursor: pointer; }
-.ws-tab { padding: 3px 8px; border: 1px solid var(--ui-light); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.ws-tab-active { background: var(--bg-color); color: #e7e7e7; }
-.ws-status-dot { width: 6px; height: 6px; border-radius: 50%; }
-.icon { width: 13px; height: 13px; filter: invert(100%); margin-right: 5px; }
+.role-label {
+  padding-left: 10px;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+.timestamp {
+  padding-right: 10px;
+  opacity: 0.8;
+}
+
+.purposeLabel {
+  background-color: var(--agent-color);
+  padding: 0 5px;
+  margin-left: 2px;
+  padding-top: 2px;
+  font-size: 10px;
+}
+
+.clickable-id {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.button-icon {
+  width: 16px;
+  height: 16px;
+  filter: invert(100%);
+  margin-left: 5px;
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.ws-tab {
+  padding: 3px 8px;
+  border: 1px solid var(--ui-light);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ws-tab-active {
+  background: var(--bg-color);
+  color: #e7e7e7;
+}
+
+.ws-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.icon {
+  width: 13px;
+  height: 13px;
+  filter: invert(100%);
+  margin-right: 5px;
+}
 </style>
