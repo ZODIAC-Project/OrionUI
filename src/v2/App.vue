@@ -293,7 +293,7 @@ import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from
 const MCP_URL = "http://130.149.158.32:30084";
 const AGENT_URL = "http://130.149.158.133:30086";
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
-const SUBSCRIPTION_BASE_URL = "ws://130.149.158.32:30002/ws/";
+const STREAM_MANAGER_URL = "http://130.149.158.32:30002";
 
 const agentTypes = {
   TIMED: 'timed',
@@ -426,7 +426,9 @@ const addWsSubscription = () => {
   const sessionInput = newWsUrl.value.trim();
   if (!sessionInput || wsSubscriptions.value.length >= 8) return;
 
-  const url = `${SUBSCRIPTION_BASE_URL}${sessionInput}`;
+  let base_url = `${STREAM_MANAGER_URL.replace("http://", "ws://")}/ws/`;
+
+  const url = `${base_url}${sessionInput}`;
   const id = `ws-${Date.now()}`;
   const label = sessionInput.slice(0, 22);
   const sub = reactive({ id, url, label, status: 'connecting', messages: [] });
