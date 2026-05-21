@@ -48,7 +48,7 @@
               :disabled="isSending" />
           </div>
           <div class="footer-row">
-            <input type="text" class="textbox" placeholder="purpose1, purpose2" v-model="accessPurposes" />
+            <input type="text" class="textbox" placeholder="purpose" v-model="accessPurpose" />
           </div>
           <div class="footer-row">
             <span class="micro-label">SESSION ID:</span>
@@ -405,7 +405,7 @@ const copyAgentId = async (id) => {
     console.error('copyAgentId failed', e);
   }
 }
-const accessPurposes = ref('');
+const accessPurpose = ref('');
 const isSending = ref(false);
 const isLaunching = ref(false);
 const MCPstatus = ref(null);
@@ -583,12 +583,7 @@ const sendMessage = async () => {
       body: JSON.stringify({
         message: text,
         session_id: String(sessionId.value ?? '').trim() || 'orion-ui-session',
-        purposes: accessPurposes.value
-          ? accessPurposes.value
-            .split(',')
-            .map((p) => p.trim())
-            .filter((p) => p)
-          : []
+        purposes: accessPurpose.value
       })
     })
   } catch (e) {
