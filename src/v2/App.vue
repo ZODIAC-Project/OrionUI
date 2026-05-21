@@ -292,6 +292,7 @@ import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from
 
 const MCP_URL = "http://130.149.158.32:30084";
 const AGENT_URL = "http://130.149.158.133:30086";
+//const AGENT_URL = "http://localhost:30086"
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
 const STREAM_MANAGER_URL = "http://130.149.158.32:30002";
 
@@ -648,6 +649,7 @@ const launchAgent = async () => {
     });
 
   try {
+    // create agent
     let response = await fetch(`${AGENT_URL}/agents`, {
       method: 'POST',
       headers: {
@@ -655,6 +657,25 @@ const launchAgent = async () => {
       },
       body: body
     })
+
+    const data = await response.json();
+    // create subscription if applicable
+    if(agentType.value === agentTypes.EVENT){
+      let subscription = JSON.stringify({
+        session_id: data.id,
+        topic: listenTopic.value,
+        purposes: purposes
+      })
+
+      let response = await fetch(`${STREAM_MANAGER_URL}/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: subscription
+      })
+    }
+
   } catch (e) {
     console.error(`error while launching agent: ${e}`)
   }
