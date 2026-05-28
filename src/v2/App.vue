@@ -9,6 +9,10 @@
         @click="selectMainTab('grafana')">
         Grafana Dashboard
       </button>
+            <button type="button" class="ws-tab top-tab-button" :class="{ 'ws-tab-active': activeMainTab === 'mqtt' }"
+        @click="selectMainTab('mqtt')">
+        MQTT Explorer
+      </button>
     </div>
 
     <div v-if="activeMainTab === 'ui'" class="app">
@@ -274,14 +278,19 @@
       </div>
     </div>
 
-    <div v-else class="grafana-view">
-      <div v-if="grafanaDashboardUrl" class="grafana-dashboard-inner">
-        <iframe :src="grafanaDashboardUrl" class="grafana-iframe" frameborder="0" @error="onGrafanaIframeError"
+    <div v-else-if="activeMainTab === 'grafana'" class="external-view">
+      <div v-if="grafanaDashboardUrl" class="external-dashboard-inner">
+        <iframe :src="grafanaDashboardUrl" class="external-iframe" frameborder="0" @error="onGrafanaIframeError"
           @load="onGrafanaIframeLoad"></iframe>
         <div v-if="grafanaIframeError" class="grafana-error">Fehler beim Laden des Grafana Dashboards.</div>
       </div>
       <div v-else class="grafana-empty">
         Keine Grafana-URL konfiguriert.
+      </div>
+    </div>
+    <div v-else class="external-view">
+      <div class="external-dashboard-inner">
+        <iframe :src="MQTT_EXPLORER_URL" class="external-iframe" frameborder="0"></iframe>
       </div>
     </div>
   </div>
@@ -295,6 +304,7 @@ const AGENT_URL = "http://130.149.158.133:30086";
 //const AGENT_URL = "http://localhost:30086"
 const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
 const STREAM_MANAGER_URL = "http://130.149.158.32:30002";
+const MQTT_EXPLORER_URL = "http://130.149.158.132:30400/";
 
 const agentTypes = {
   TIMED: 'timed',
@@ -779,12 +789,12 @@ function getIcon(name) {
   overflow-x: auto;
 }
 
-.grafana-view {
+.external-view {
   max-width: 1900px;
   margin: 0 auto;
 }
 
-.grafana-dashboard-inner {
+.external-dashboard-inner {
   width: 100%;
   min-height: calc(100vh - 112px);
   padding: 10px;
@@ -794,7 +804,7 @@ function getIcon(name) {
   box-sizing: border-box;
 }
 
-.grafana-iframe {
+.external-iframe {
   width: 100%;
   min-height: calc(100vh - 134px);
   border: 1px solid var(--ui-light);
