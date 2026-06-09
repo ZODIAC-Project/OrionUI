@@ -299,12 +299,57 @@
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
-const MCP_URL = "http://130.149.158.32:30084";
-const AGENT_URL = "http://130.149.158.133:30086";
-//const AGENT_URL = "http://localhost:30086"
-const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
-const STREAM_MANAGER_URL = "http://130.149.158.32:30002";
-const MQTT_EXPLORER_URL = "http://130.149.158.132:30400/";
+const CHAT_API_BASE =
+  window.__APP_CONFIG__?.VITE_CHAT_API_BASE ||
+  import.meta.env.VITE_CHAT_API_BASE ||
+  '/api';
+const CHAT_API_PATH =
+  window.__APP_CONFIG__?.VITE_CHAT_API_PATH ||
+  import.meta.env.VITE_CHAT_API_PATH ||
+  '/chat';
+const AGENT_URL =
+  window.__APP_CONFIG__?.VITE_AGENT_API_BASE ||
+  import.meta.env.VITE_AGENT_API_BASE ||
+  '/agent-api';
+const TOOL_USE_URL =
+  window.__APP_CONFIG__?.VITE_TOOL_USE_URL ||
+  import.meta.env.VITE_TOOL_USE_URL ||
+  '/api/tool-use';
+const STREAM_MANAGER_URL =
+  window.__APP_CONFIG__?.VITE_STREAM_MANAGER_URL ||
+  import.meta.env.VITE_STREAM_MANAGER_URL ||
+  'http://130.149.158.32:30002';
+const MQTT_EXPLORER_URL =
+  window.__APP_CONFIG__?.VITE_MQTT_EXPLORER_URL ||
+  import.meta.env.VITE_MQTT_EXPLORER_URL ||
+  'http://130.149.158.132:30400/';
+const SUBSCRIPTION_BASE_URL =
+  window.__APP_CONFIG__?.VITE_SUBSCRIPTION_BASE_URL ||
+  import.meta.env.VITE_SUBSCRIPTION_BASE_URL ||
+  `${STREAM_MANAGER_URL.replace(/^http/, 'ws')}/ws/`;
+
+const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
+const ensureLeadingSlash = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '/chat';
+  return normalized.startsWith('/') ? normalized : `/${normalized}`;
+};
+const toWebSocketUrl = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  if (normalized.startsWith('http://')) return `ws://${normalized.slice(7)}`;
+  if (normalized.startsWith('https://')) return `wss://${normalized.slice(8)}`;
+  if (normalized.startsWith('/')) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${normalized}`;
+  }
+  if (!normalized.startsWith('ws://') && !normalized.startsWith('wss://')) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const path = normalized.startsWith('./') ? normalized.slice(1) : `/${normalized}`;
+    return `${protocol}//${window.location.host}${path}`;
+  }
+  return normalized;
+};
 
 const agentTypes = {
   TIMED: 'timed',
@@ -437,9 +482,7 @@ const addWsSubscription = () => {
   const sessionInput = newWsUrl.value.trim();
   if (!sessionInput || wsSubscriptions.value.length >= 8) return;
 
-  let base_url = `${STREAM_MANAGER_URL.replace("http://", "ws://")}/ws/`;
-
-  const url = `${base_url}${sessionInput}`;
+  const url = `${toWebSocketUrl(SUBSCRIPTION_BASE_URL)}${sessionInput}`;
   const id = `ws-${Date.now()}`;
   const label = sessionInput.slice(0, 22);
   const sub = reactive({ id, url, label, status: 'connecting', messages: [] });
@@ -480,13 +523,13 @@ const removeWsSubscription = (id) => {
 
 const checkStatus = async () => {
   try {
-    const res = await fetch(`${MCP_URL}/health`);
+    const res = await fetch(`${trimTrailingSlash(CHAT_API_BASE)}/health`);
     MCPstatus.value = res.ok;
   } catch (err) {
     MCPstatus.value = false;
   }
   try {
-    const res = await fetch(`${AGENT_URL}/health`);
+    const res = await fetch(`${trimTrailingSlash(AGENT_URL)}/health`);
     agentManagerStatus.value = res.ok;
   } catch (err) {
     agentManagerStatus.value = false;
@@ -505,7 +548,7 @@ const connectHistorySocket = (id) => {
 
   if (!id) return;
 
-  const wsUrl = `${AGENT_URL.replace(/^http/, 'ws')}/agents/${id}/history`;
+  const wsUrl = `${toWebSocketUrl(trimTrailingSlash(AGENT_URL))}/agents/${id}/history`;
   historySocket = new WebSocket(wsUrl);
 
   historySocket.onmessage = (event) => {
@@ -531,7 +574,7 @@ watch(historyView, (newView) => {
 
 onMounted(() => {
   checkStatus()
-  agentsSocket = new WebSocket(`${AGENT_URL.replace(/^http/, 'ws')}/agents`);
+  agentsSocket = new WebSocket(`${toWebSocketUrl(trimTrailingSlash(AGENT_URL))}/agents`);
   agentsSocket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
@@ -542,7 +585,7 @@ onMounted(() => {
     }
   }
 
-  toolUseSocket = new WebSocket(TOOL_USE_URL);
+  toolUseSocket = new WebSocket(toWebSocketUrl(TOOL_USE_URL));
   toolUseSocket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
@@ -585,7 +628,7 @@ const sendMessage = async () => {
   let response;
 
   try {
-    response = await fetch(`${MCP_URL}/chat`, {
+    response = await fetch(`${trimTrailingSlash(CHAT_API_BASE)}${ensureLeadingSlash(CHAT_API_PATH)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -654,8 +697,7 @@ const launchAgent = async () => {
     });
 
   try {
-    // create agent
-    let response = await fetch(`${AGENT_URL}/agents`, {
+    let response = await fetch(`${trimTrailingSlash(AGENT_URL)}/agents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -707,7 +749,7 @@ const toggleAgentPause = async (agentId) => {
     historyView.value.paused = newPauseState;
   }
 
-  const res = await fetch(`${AGENT_URL}/agents/${agentId}`, {
+  const res = await fetch(`${trimTrailingSlash(AGENT_URL)}/agents/${agentId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pause: newPauseState })
@@ -722,7 +764,7 @@ const toggleAgentPause = async (agentId) => {
 }
 
 const deleteAgent = async (agentId) => {
-  const res = await fetch(`${AGENT_URL}/agents/${agentId}`, { method: 'DELETE' });
+  const res = await fetch(`${trimTrailingSlash(AGENT_URL)}/agents/${agentId}`, { method: 'DELETE' });
   agents.value = agents.value.filter(agent => agent.id !== agentId);
 
   if (!res.ok) {
@@ -732,7 +774,7 @@ const deleteAgent = async (agentId) => {
 }
 
 const deleteAllAgents = async () => {
-  const res = await fetch(`${AGENT_URL}/agents`, { method: 'DELETE' });
+  const res = await fetch(`${trimTrailingSlash(AGENT_URL)}/agents`, { method: 'DELETE' });
   agents.value = [];
 
   if (!res.ok) {

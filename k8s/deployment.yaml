@@ -46,7 +46,7 @@ data:
 
       location /agent-api/ {
         rewrite ^/agent-api/?(.*)$ /$1 break;
-        proxy_pass http://agent-api.zodiac.svc.cluster.local:3000;
+        proxy_pass http://agent-api.zodiac.svc.cluster.local:30086;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -96,66 +96,6 @@ spec:
           configMap:
             name: orion-ui-nginx
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: zodiac
-  name: agent-redis
-  labels:
-    app: agent-redis
-spec:
-  type: ClusterIP
-  ports:
-    - name: redis
-      port: 6379
-      targetPort: 6379
-      protocol: TCP
-  selector:
-    app: agent-redis
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: zodiac
-  name: agent-redis
-  labels:
-    app: agent-redis
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: agent-redis
-  template:
-    metadata:
-      labels:
-        app: agent-redis
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          ports:
-            - containerPort: 6379
-          resources:
-            {}
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: zodiac
-  name: agent-api
-  labels:
-    app: agent-api
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 3000
-      targetPort: 3000
-      protocol: TCP
-  selector:
-    app: agent-api
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -176,50 +116,25 @@ spec:
       imagePullSecrets:
         - name: regcred
       containers:
-        - name: agent-api
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/agent:latest
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 3000
+        - name: agent
+          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/new-agent:latest
+          imagePullPolicy: IfNotPresent
           env:
-            - name: REDIS_URL
-              value: redis://agent-redis:6379
-            - name: MCP_CLIENT_URL
+            - name: MCP_URL
               value: http://mcp-client-service:8000/chat
-            - name: PORT
-              value: "3000"
-          resources:
-            {}
-
+          ports:
+            - containerPort: 30086
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
   namespace: zodiac
-  name: agent-worker
-  labels:
-    app: agent-worker
+  name: agent-api
 spec:
-  replicas: 1
+  type: ClusterIP
   selector:
-    matchLabels:
-      app: agent-worker
-  template:
-    metadata:
-      labels:
-        app: agent-worker
-    spec:
-      imagePullSecrets:
-        - name: regcred
-      containers:
-        - name: agent-worker
-          image: git.tu-berlin.de:5000/zodiac/zodiac-meta/agent:0.1.0-cicd
-          imagePullPolicy: Always
-          command: ["npm", "run", "worker"]
-          env:
-            - name: REDIS_URL
-              value: redis://agent-redis:6379
-            - name: MCP_CLIENT_URL
-              value: http://mcp-client-service:8000/chat
-          resources:
-            {}
+    app: agent-api
+  ports:
+    - protocol: TCP
+      port: 30086
+      targetPort: 30086
