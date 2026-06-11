@@ -299,7 +299,6 @@
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 
-<<<<<<< HEAD
 const CHAT_API_BASE =
   window.__APP_CONFIG__?.VITE_CHAT_API_BASE ||
   import.meta.env.VITE_CHAT_API_BASE ||
@@ -351,15 +350,6 @@ const toWebSocketUrl = (value) => {
   }
   return normalized;
 };
-=======
-//const MCP_URL = "http://130.149.158.32:30084";
-const MCP_URL = "http://localhost:8001"
-const AGENT_URL = "http://130.149.158.133:30086";
-//const AGENT_URL = "http://localhost:30086"
-const TOOL_USE_URL = "ws://130.149.158.133:30084/tool-use";
-const STREAM_MANAGER_URL = "http://130.149.158.32:30002";
-const MQTT_EXPLORER_URL = "http://130.149.158.132:30400/";
->>>>>>> 4fbc2e4 (fix: formating)
 
 const agentTypes = {
   TIMED: 'timed',
