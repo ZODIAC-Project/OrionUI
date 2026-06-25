@@ -9,7 +9,7 @@
         @click="selectMainTab('grafana')">
         Grafana Dashboard
       </button>
-            <button type="button" class="ws-tab top-tab-button" :class="{ 'ws-tab-active': activeMainTab === 'mqtt' }"
+      <button type="button" class="ws-tab top-tab-button" :class="{ 'ws-tab-active': activeMainTab === 'mqtt' }"
         @click="selectMainTab('mqtt')">
         MQTT Explorer
       </button>
@@ -231,7 +231,7 @@
         <div class="msgbox" ref="wsMessageBox">
           <div v-if="wsSubscriptions.length === 0"
             style="color: var(--ui-text-light); font-size: 12px; text-align: center; margin-top: 40px; padding: 0 20px; line-height: 1.8;">
-            no active subscriptions<br />enter Session ID below
+            no active subscriptions<br />enter connection details below
           </div>
           <div v-for="(msg, index) in activeTabMessages" :key="index" class="message-wrapper">
             <div class="message-header incoming">
@@ -244,10 +244,13 @@
         </div>
         <div class="optionbox ws-footer">
           <div class="footer-row">
-            <input type="text" class="textbox" placeholder="session ID" v-model="newWsUrl"
-              v-on:keyup.enter="addWsSubscription" />
+            <input type="text" class="textbox" placeholder="session ID" v-model="newWsSession" />
+            <input type="text" class="textbox" placeholder="topic" v-model="newWsTopic" />
+          </div>
+          <div class="footer-row">
+            <input type="text" class="textbox" placeholder="purpose" v-model="newWsPurpose" />
             <input type="button" class="button primary" value="CONNECT" @click="addWsSubscription"
-              :disabled="!newWsUrl.trim() || wsSubscriptions.length >= 8" />
+              :disabled="!newWsSession.trim() || !newWsTopic.trim() || !newWsPurpose.trim() || wsSubscriptions.length >= 8" />
           </div>
         </div>
       </div>
@@ -323,10 +326,11 @@ const MQTT_EXPLORER_URL =
   window.__APP_CONFIG__?.VITE_MQTT_EXPLORER_URL ||
   import.meta.env.VITE_MQTT_EXPLORER_URL ||
   'http://130.149.158.132:30400/';
+
 const SUBSCRIPTION_BASE_URL =
   window.__APP_CONFIG__?.VITE_SUBSCRIPTION_BASE_URL ||
   import.meta.env.VITE_SUBSCRIPTION_BASE_URL ||
-  `${STREAM_MANAGER_URL.replace(/^http/, 'ws')}/ws/`;
+  `${STREAM_MANAGER_URL}`;
 
 const trimTrailingSlash = (value) => String(value || '').replace(/\/+$/, '');
 const ensureLeadingSlash = (value) => {
@@ -467,7 +471,9 @@ const MCPstatus = ref(null);
 const agentManagerStatus = ref(null);
 
 // WebSocket monitor state
-const newWsUrl = ref('');
+const newWsSession = ref('');
+const newWsTopic = ref('');
+const newWsPurpose = ref('');
 const wsSubscriptions = ref([]);
 const activeWsTab = ref(0);
 const wsSocketMap = {};
@@ -478,18 +484,39 @@ const activeTabMessages = computed(() => {
   return sub ? sub.messages : [];
 });
 
-const addWsSubscription = () => {
-  const sessionInput = newWsUrl.value.trim();
-  if (!sessionInput || wsSubscriptions.value.length >= 8) return;
+const addWsSubscription = async () => {
+  const sessionId = newWsSession.value.trim();
+  const topic = newWsTopic.value.trim();
+  const purpose = newWsPurpose.value.trim();
 
-  const url = `${toWebSocketUrl(SUBSCRIPTION_BASE_URL)}${sessionInput}`;
+  if (!sessionId || !topic || !purpose || wsSubscriptions.value.length >= 8) return;
+
+  // 1. Register with stream manager
+  try {
+    const res = await fetch(`${trimTrailingSlash(SUBSCRIPTION_BASE_URL)}/subscribe_browser`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, topic, purpose }),
+    });
+    if (!res.ok) {
+      console.error('subscribe_browser failed', await res.text());
+      return;
+    }
+  } catch (err) {
+    console.error('Connection to Stream Manager failed', err);
+    return;
+  }
+
+  const url = `${toWebSocketUrl(trimTrailingSlash(SUBSCRIPTION_BASE_URL))}/ws/${sessionId}`;
   const id = `ws-${Date.now()}`;
-  const label = sessionInput.slice(0, 22);
+  const label = sessionId.slice(0, 22);
   const sub = reactive({ id, url, label, status: 'connecting', messages: [] });
 
   wsSubscriptions.value.unshift(sub);
   activeWsTab.value = 0;
-  newWsUrl.value = '';
+  newWsSession.value = '';
+  newWsTopic.value = '';
+  newWsPurpose.value = '';
 
   const socket = new WebSocket(url);
   wsSocketMap[id] = socket;
@@ -498,13 +525,15 @@ const addWsSubscription = () => {
   socket.onerror = () => { sub.status = 'error'; };
   socket.onclose = () => { if (sub.status !== 'removed') sub.status = 'closed'; };
   socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    // Filter out keepalive pings
-    if (data.type === 'ping') return;
-
-    sub.messages.unshift({ data: event.data, timestamp: Date.now() });
-    if (sub.messages.length > 200) sub.messages.pop();
+    try {
+      const data = JSON.parse(event.data);
+      // Filter out keepalive pings
+      if (data.type === 'ping') return;
+      sub.messages.unshift({ data: event.data, timestamp: Date.now() });
+      if (sub.messages.length > 200) sub.messages.pop();
+    } catch (e) {
+      sub.messages.unshift({ data: event.data, timestamp: Date.now() });
+    }
   };
 };
 
@@ -913,11 +942,9 @@ function getIcon(name) {
   height: 100%;
 }
 
-/* WebSocket column footer overrides — set `--ws-footer-height` to change */
 .ws-footer {
-  height: var(--ws-footer-height, 70px);
-  min-height: var(--ws-footer-height, 70px);
-  max-height: var(--ws-footer-height, 200px);
+  height: var(--ws-footer-height, 110px);
+  min-height: var(--ws-footer-height, 110px);
 }
 
 .textbox:focus {
@@ -1006,8 +1033,6 @@ function getIcon(name) {
 .checkbox-box.checked {
   background: var(--assistant-color);
 }
-
-/* END FOOTER SECTION */
 
 .minioptionbox {
   height: auto;
