@@ -595,10 +595,13 @@ const connectHistorySocket = (id) => {
 
 watch(historyView, (newView) => {
   historyMessages.value = [];
+  if (historySocket) {
+    historySocket.close();
+    historySocket = null;
+  }
+
   if (newView)
     connectHistorySocket(newView.id);
-  else
-    if (historySocket) historySocket.close();
 }, { immediate: true });
 
 onMounted(() => {
