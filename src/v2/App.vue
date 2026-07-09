@@ -15,7 +15,7 @@
       </button>
     </div>
 
-    <div v-if="activeMainTab === 'ui'" class="app">
+    <div v-show="activeMainTab === 'ui'" class="app">
       <!-- Column 1: Chat -->
       <div class="column">
         <div class="minioptionbox"
@@ -281,7 +281,7 @@
       </div>
     </div>
 
-    <div v-else-if="activeMainTab === 'grafana'" class="external-view">
+    <div v-show="activeMainTab === 'grafana'" class="external-view">
       <div v-if="grafanaDashboardUrl" class="external-dashboard-inner">
         <iframe :src="grafanaDashboardUrl" class="external-iframe" frameborder="0" @error="onGrafanaIframeError"
           @load="onGrafanaIframeLoad"></iframe>
@@ -291,7 +291,7 @@
         Keine Grafana-URL konfiguriert.
       </div>
     </div>
-    <div v-else class="external-view">
+    <div v-show="activeMainTab === 'mqtt'" class="external-view">
       <div class="external-dashboard-inner">
         <iframe :src="MQTT_EXPLORER_URL" class="external-iframe" frameborder="0"></iframe>
       </div>
